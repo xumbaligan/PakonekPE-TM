@@ -1,0 +1,105 @@
+﻿@page
+@model TM_PE.Pages.OfficeStaff.IndexModel
+
+@{
+    ViewData["Title"] = "My Assigned Tasks";
+    Layout = "_OfficeStaffLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="fw-bold mb-0"><i class="bi bi-person-workspace me-1"></i> My Assigned Tasks</h3>
+        <div class="text-muted small">Viewing as <strong>@Model.CurrentEmployee.FullName</strong></div>
+    </div>
+
+    <form method="post" asp-page-handler="SwitchEmployee">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left-right"></i> Switch Employee
+        </button>
+    </form>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+
+        @if (!Model.AssignedTasks.Any())
+        {
+            <div class="p-4 text-muted text-center">You don't have any assigned tasks yet.</div>
+        }
+        else
+        {
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr class="text-muted small">
+                        <th class="ps-3">Task</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th style="width:180px;">Overall Progress</th>
+                        <th>Your Activities</th>
+                        <th class="text-end pe-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in Model.AssignedTasks)
+                    {
+                        var badgeClass = task.Status switch
+                        {
+                            "Completed" => "bg-success-subtle text-success",
+                            "In Progress" => "bg-info-subtle text-info",
+                            "Overdue" => "bg-danger-subtle text-danger",
+                            _ => "bg-secondary-subtle text-secondary"
+                        };
+
+                        var soleAssignee = task.Assignments.Count <= 1;
+                        var myActivities = soleAssignee
+                        ? task.Activities.ToList()
+                        : task.Activities.Where(a => a.AssignedEmployeeID == Model.CurrentEmployee.EmployeeId).ToList();
+                        var myApproved = myActivities.Count(a => a.Status == "Approved");
+                        var openActivities = soleAssignee ? 0 : task.Activities.Count(a => a.AssignedEmployeeID == null);
+
+                        <tr>
+                            <td class="ps-3">
+                                <div class="fw-semibold">@task.TaskName</div>
+                                <div class="text-muted small">TSK-@task.OfficeTaskID.ToString("D5")</div>
+                            </td>
+                            <td>@task.DueDate.ToString("M/d/yyyy")</td>
+                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@task.Status</span></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:8px; min-width:80px;">
+                                        <div class="progress-bar" role="progressbar" style="width:@(task.Progress)%;"></div>
+                                    </div>
+                                    <span class="text-muted small">@task.Progress%</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if (myActivities.Any())
+                                {
+                                    <span>@myApproved/@myActivities.Count approved</span>
+                                    @if (!soleAssignee && openActivities > 0)
+                                    {
+                                        <div class="text-muted small">@openActivities open to claim</div>
+                                    }
+                                }
+                                else if (!soleAssignee && openActivities > 0)
+                                {
+                                    <span class="text-muted small">@openActivities open — none claimed yet</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">None yet</span>
+                                }
+                            </td>
+                            <td class="text-end pe-3">
+                                <a asp-page="./Details" asp-route-id="@task.OfficeTaskID" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+    </div>
+</div>

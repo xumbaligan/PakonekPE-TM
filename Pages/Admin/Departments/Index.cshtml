@@ -1,0 +1,177 @@
+﻿@page
+@model TM_PE.Pages.Admin.Departments.IndexModel
+@{
+    ViewData["Title"] = "Departments";
+    Layout = "_Admin";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Departments</h2>
+    <a class="btn btn-primary" asp-page="Create"><i class="bi bi-plus-lg"></i> New Department</a>
+</div>
+
+<form method="get" class="mb-3">
+    <input class="form-control" name="search" id="liveSearch"
+           value="@Model.Search" placeholder="Search departments..." />
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Members</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Departments.Any())
+            {
+                <tr id="emptyRow">
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block"></i>No departments found
+                    </td>
+                </tr>
+            }
+            else
+            {
+                <tr id="emptyRow" style="display:none;">
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-3 d-block"></i>No departments found
+                    </td>
+                </tr>
+            }
+
+            @foreach (var d in Model.Departments)
+            {
+                <tr data-name="@d.DepartmentName.ToLower()"
+                    data-description="@(d.Description?.ToLower() ?? "")">
+                    <td><strong>@d.DepartmentName</strong></td>
+                    <td>@d.Description</td>
+                    <td>@d.Employees.Count</td>
+                    <td>
+                        @if (d.IsActive)
+                        {
+                            <span class="badge badge-soft-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-soft-warning">Inactive</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deptEmployeesModal"
+                                data-dept-id="@d.DepartmentId"
+                                data-dept-name="@d.DepartmentName"
+                                data-employees="@System.Text.Json.JsonSerializer.Serialize(d.Employees.Select(e => new { e.FullName, e.Email, Role = e.RoleType.ToString(), e.IsActive }))"
+                                onclick="openDeptModal(this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@d.DepartmentId">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<!-- Department Employees Modal -->
+<div class="modal fade" id="deptEmployeesModal" tabindex="-1" aria-labelledby="deptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-semibold mb-0" id="deptModalLabel">Department Employees</h5>
+                    <small id="deptModalSub" class="text-muted"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="deptEmployeeList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        const searchInput = document.getElementById('liveSearch');
+        const rows = document.querySelectorAll('tbody tr[data-name]');
+
+        function filterTable() {
+            const searchVal = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const name = row.dataset.name || '';
+                const description = row.dataset.description || '';
+
+                const matches = name.includes(searchVal) || description.includes(searchVal);
+
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) {
+                emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+            }
+        }
+        searchInput.addEventListener('input', filterTable);
+
+                function openDeptModal(btn) {
+            const name = btn.dataset.deptName;
+            const employees = JSON.parse(btn.dataset.employees);
+
+            document.getElementById('deptModalLabel').textContent = name;
+            document.getElementById('deptModalSub').textContent =
+                employees.length + (employees.length === 1 ? ' employee' : ' employees');
+
+            const list = document.getElementById('deptEmployeeList');
+
+            if (employees.length === 0) {
+                list.innerHTML = '<p class="text-center text-muted py-4">No employees in this department.</p>';
+                return;
+            }
+
+            list.innerHTML = `
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${employees.map(e => {
+                            const initials = e.FullName.split(' ').slice(0, 2).map(n => n[0]).join('');
+                            const statusBadge = e.IsActive
+                                ? '<span class="badge badge-soft-success">Active</span>'
+                                : '<span class="badge badge-soft-warning">Inactive</span>';
+                            return `<tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:34px;height:34px;border-radius:50%;background:#e8eaf6;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;color:#5c6bc0;flex-shrink:0;">
+                                            ${initials}
+                                        </div>
+                                        <strong>${e.FullName}</strong>
+                                    </div>
+                                </td>
+                                <td class="text-muted">${e.Email}</td>
+                                <td><span class="badge badge-soft-primary">${e.Role}</span></td>
+                                <td>${statusBadge}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+        }
+    </script>
+}

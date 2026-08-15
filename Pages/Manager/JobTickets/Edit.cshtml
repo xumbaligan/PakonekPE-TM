@@ -1,0 +1,272 @@
+﻿@page "{id:int}"
+@model TM_PE.Pages.Manager.JobTickets.EditModel
+
+@{
+    ViewData["Title"] = "Edit Job Ticket";
+    Layout = "_Layout";
+}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+
+        <h3 class="fw-bold">Edit Job Ticket</h3>
+        <p class="text-muted">
+            Update the job details below. Assigned field technicians can't be added or removed here.
+        </p>
+
+        <form method="post" id="ticketForm">
+
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+            <input type="hidden" asp-for="JobTicket.JobTicketID" />
+
+            <!-- Task Number + Date Created -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold"># Task Number</label>
+                    <input class="form-control" value="@Model.JobTicket.TicketNumber" disabled />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Date Created</label>
+                    <input type="date" class="form-control" value="@Model.JobTicket.DateCreated.ToString("yyyy-MM-dd")" disabled />
+                </div>
+            </div>
+
+            <!-- Job Type -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Job Type <span class="text-danger">*</span></label>
+                <select asp-for="JobTicket.JobType" id="jobTypeSelect" class="form-select">
+                    @foreach (var type in Model.JobTypeOptions)
+                    {
+                        <option value="@type" selected="@(type == Model.JobTicket.JobType)">@type</option>
+                    }
+                </select>
+                <span asp-validation-for="JobTicket.JobType" class="text-danger"></span>
+            </div>
+
+            <!-- Client Info (auto-cleared/hidden when Job Type = Maintenance) -->
+            <div class="row mb-3" id="clientInfoGroup">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Full Name (Client) <span class="text-danger">*</span></label>
+                    <input asp-for="JobTicket.ClientFullName" id="clientFullNameInput" class="form-control" />
+                    <span asp-validation-for="JobTicket.ClientFullName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Primary Number <span class="text-danger">*</span></label>
+                    <input asp-for="JobTicket.PrimaryNumber" id="primaryNumberInput" class="form-control" />
+                    <span asp-validation-for="JobTicket.PrimaryNumber" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Secondary Number</label>
+                    <input asp-for="JobTicket.SecondaryNumber" id="secondaryNumberInput" class="form-control" />
+                    <span asp-validation-for="JobTicket.SecondaryNumber" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Fiber Plan (Installation) / Description (Repair, Maintenance) + Date + Status -->
+            <div class="row mb-3">
+                <div class="col-md-4" id="fiberPlanGroup">
+                    <label class="form-label fw-semibold">Fiber Plan <span class="text-danger">*</span></label>
+                    <select asp-for="JobTicket.FiberPlan" id="fiberPlanSelect" class="form-select">
+                        <option value="">Select a plan</option>
+                        @foreach (var plan in Model.FiberPlanOptions)
+                        {
+                            <option value="@plan" selected="@(plan == Model.JobTicket.FiberPlan)">₱@plan / month</option>
+                        }
+                    </select>
+                    <span asp-validation-for="JobTicket.FiberPlan" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4 d-none" id="descriptionGroup">
+                    <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+                    <textarea asp-for="JobTicket.Description" id="descriptionInput" class="form-control" rows="1" maxlength="500"></textarea>
+                    <span asp-validation-for="JobTicket.Description" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" id="serviceDateLabel">Date of Installation <span class="text-danger">*</span></label>
+                    <input asp-for="JobTicket.ServiceDate" type="date" id="serviceDateInput"
+                           value="@Model.JobTicket.ServiceDate.ToString("yyyy-MM-dd")"
+                           class="form-control" />
+                    <input type="hidden" id="originalServiceDate" value="@Model.OriginalServiceDate.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="JobTicket.ServiceDate" class="text-danger"></span>
+                </div>
+
+                @* <div class="col-md-4">
+                    <label class="form-label fw-semibold">Status</label>
+                    <select asp-for="JobTicket.Status" class="form-select">
+                        <option value="Pending">Pending</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div> *@
+            </div>
+
+            <!-- Reschedule Reason (shown only when the date above is changed) -->
+            <div class="row mb-3 d-none" id="rescheduleReasonRow">
+                <div class="col-12">
+                    <div class="alert alert-warning mb-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Changing the date will mark this job order as <strong>Rescheduled</strong> and
+                        the assigned field technician's current remarks and photos/files will be
+                        archived so they can start fresh for the new date.
+                    </div>
+                    <label class="form-label fw-semibold">Reason for Reschedule <span class="text-danger">*</span></label>
+                    <textarea asp-for="RescheduleReason" id="rescheduleReasonInput" class="form-control" rows="2" maxlength="500"></textarea>
+                    <span asp-validation-for="RescheduleReason" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="fw-semibold mb-2">📍 Job Location <span class="text-danger">*</span></h5>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Address</label>
+                        <input asp-for="JobTicket.LocationAddress" id="locationAddressInput" class="form-control" placeholder="Enter the job site address" />
+                        <span asp-validation-for="JobTicket.LocationAddress" class="text-danger"></span>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold">Nearest Landmark</label>
+                        <input asp-for="JobTicket.NearestLandmark" id="nearestLandmarkInput" class="form-control" placeholder="e.g. Near the barangay hall" />
+                        <span asp-validation-for="JobTicket.NearestLandmark" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assignees (read-only) -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="fw-semibold mb-3">👷 Assigned Field Technicians</h5>
+                    @if (Model.JobTicket.Assignments != null && Model.JobTicket.Assignments.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
+                            {
+                                <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
+                                    @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No assignees</span>
+                    }
+                    <p class="text-muted small mt-2 mb-0">Assignees are fixed at creation and can't be changed from this page.</p>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="text-end">
+                <a asp-page="Index" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script src="~/js/address-autocomplete.js"></script>
+    <script>
+        (function () {
+            // ---------------- ADDRESS AUTOCOMPLETE ----------------
+            // Biased toward Cebu/Philippines; users can still search anywhere.
+            initAddressAutocomplete(document.getElementById('locationAddressInput'), { lat: 10.3157, lon: 123.8854 });
+            initAddressAutocomplete(document.getElementById('nearestLandmarkInput'), { lat: 10.3157, lon: 123.8854 });
+
+            // ---------------- JOB TYPE TOGGLE ----------------
+            const jobTypeSelect = document.getElementById('jobTypeSelect');
+            const fiberPlanGroup = document.getElementById('fiberPlanGroup');
+            const fiberPlanSelect = document.getElementById('fiberPlanSelect');
+            const descriptionGroup = document.getElementById('descriptionGroup');
+            const descriptionInput = document.getElementById('descriptionInput');
+            const serviceDateLabel = document.getElementById('serviceDateLabel');
+
+            // Client Info (Full Name / Primary / Secondary) — only collected for
+            // non-Maintenance jobs. Switching to Maintenance clears whatever was typed;
+            // switching away from Maintenance brings the fields back (empty, to be filled in).
+            const clientInfoGroup = document.getElementById('clientInfoGroup');
+            const clientFullNameInput = document.getElementById('clientFullNameInput');
+            const primaryNumberInput = document.getElementById('primaryNumberInput');
+            const secondaryNumberInput = document.getElementById('secondaryNumberInput');
+
+            function applyClientInfoVisibility(type) {
+                if (type === 'Maintenance') {
+                    clientInfoGroup.classList.add('d-none');
+                    clientFullNameInput.value = '';
+                    primaryNumberInput.value = '';
+                    secondaryNumberInput.value = '';
+                    clientFullNameInput.removeAttribute('required');
+                    primaryNumberInput.removeAttribute('required');
+                } else {
+                    clientInfoGroup.classList.remove('d-none');
+                    clientFullNameInput.setAttribute('required', 'required');
+                    primaryNumberInput.setAttribute('required', 'required');
+                }
+            }
+
+            function applyJobType() {
+                const type = jobTypeSelect.value;
+                if (type === 'Repair') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Repair <span class="text-danger">*</span>';
+                } else if (type === 'Inspection') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Inspection <span class="text-danger">*</span>';
+                } else if (type === 'Maintenance') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Maintenance <span class="text-danger">*</span>';
+                } else {
+                    fiberPlanGroup.classList.remove('d-none');
+                    descriptionGroup.classList.add('d-none');
+                    fiberPlanSelect.setAttribute('required', 'required');
+                    descriptionInput.removeAttribute('required');
+                    serviceDateLabel.innerHTML = 'Date of Installation <span class="text-danger">*</span>';
+                }
+                applyClientInfoVisibility(type);
+            }
+
+            jobTypeSelect.addEventListener('change', applyJobType);
+            applyJobType();
+
+            // ---------------- RESCHEDULE REASON TOGGLE ----------------
+            const serviceDateInput = document.getElementById('serviceDateInput');
+            const originalServiceDate = document.getElementById('originalServiceDate');
+            const rescheduleReasonRow = document.getElementById('rescheduleReasonRow');
+            const rescheduleReasonInput = document.getElementById('rescheduleReasonInput');
+
+            function applyRescheduleVisibility() {
+                if (serviceDateInput.value !== originalServiceDate.value) {
+                    rescheduleReasonRow.classList.remove('d-none');
+                    rescheduleReasonInput.setAttribute('required', 'required');
+                } else {
+                    rescheduleReasonRow.classList.add('d-none');
+                    rescheduleReasonInput.removeAttribute('required');
+                }
+            }
+
+            serviceDateInput.addEventListener('change', applyRescheduleVisibility);
+            serviceDateInput.addEventListener('input', applyRescheduleVisibility);
+            applyRescheduleVisibility();
+        })();
+    </script>
+}

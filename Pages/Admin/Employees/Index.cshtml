@@ -1,0 +1,123 @@
+﻿@page
+@model TM_PE.Pages.Admin.Employees.IndexModel
+@{
+    ViewData["Title"] = "Employees";
+    Layout = "_Admin";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Employees</h2>
+    <a class="btn btn-primary" asp-page="Create"><i class="bi bi-plus-lg"></i> New Employee</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input class="form-control" name="search" id="liveSearch"
+               value="@Model.Search" placeholder="Search by name or email..." />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="role" id="liveRole">
+            <option value="">All Roles</option>
+            <option value="OfficeStaff" selected="@(Model.Role == "OfficeStaff")">Office Staff</option>
+            <option value="FieldTechnician" selected="@(Model.Role == "FieldTechnician")">Field Technician</option>
+        </select>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Role</th>
+                <th>Date Hired</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Employees.Any())
+            {
+                <tr id="emptyRow">
+                    <td colspan="6" class="text-center text-muted py-4">No employees found</td>
+                </tr>
+            }
+            else
+            {
+                <tr id="emptyRow" style="display:none;">
+                    <td colspan="6" class="text-center text-muted py-4">No employees found</td>
+                </tr>
+            }
+
+            @foreach (var e in Model.Employees)
+            {
+                <tr data-name="@e.FullName.ToLower()"
+                    data-email="@e.Email.ToLower()"
+                    data-role="@e.RoleType.ToString()">
+                    <td>
+                        <div class="d-flex flex-column">
+                            <strong>@e.FullName</strong>
+                            <small class="text-muted">@e.Email</small>
+                        </div>
+                    </td>
+                    <td>@e.Department?.DepartmentName</td>
+                    <td><span class="badge badge-soft-primary">@e.RoleType</span></td>
+                    <td>@e.HiredAt.ToString("MM/dd/yyyy")</td>
+                    <td>
+                        @if (e.IsActive)
+                        {
+                            <span class="badge badge-soft-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-soft-warning">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@e.EmployeeId">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@section Scripts {
+    <script>
+        const searchInput = document.getElementById('liveSearch');
+        const roleSelect = document.getElementById('liveRole');
+        const rows = document.querySelectorAll('tbody tr[data-name]');
+
+        function filterTable() {
+            const searchVal = searchInput.value.toLowerCase().trim();
+            const roleVal = roleSelect.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const name = row.dataset.name || '';
+                const email = row.dataset.email || '';
+                const role = row.dataset.role || '';
+
+                const matchesSearch = name.includes(searchVal) || email.includes(searchVal);
+                const matchesRole = roleVal === '' || role.toLowerCase() === roleVal.toLowerCase();
+
+                if (matchesSearch && matchesRole) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) {
+                emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+            }
+        }
+
+        searchInput.addEventListener('input', filterTable);
+        roleSelect.addEventListener('change', filterTable);
+    </script>
+}

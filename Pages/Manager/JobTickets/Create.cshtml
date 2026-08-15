@@ -1,0 +1,463 @@
+﻿@page
+@model TM_PE.Pages.Manager.JobTickets.CreateModel
+
+@{
+    ViewData["Title"] = "Create Job Ticket";
+    Layout = "_Layout";
+}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+
+        <h3 class="fw-bold">Job Ticket Form</h3>
+        <p class="text-muted">
+            Fill out the job details, enter the installation location, and assign field technicians.
+        </p>
+
+        <form method="post" id="ticketForm">
+
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <!-- ID Number + Date Created -->
+            <div class="row mb-3">
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                        # Task Number
+                    </label>
+
+                    <input class="form-control"
+                           value="@Model.NextTicketNumber"
+                           disabled />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                        Date Created
+                    </label>
+
+                    <input type="date"
+                           class="form-control"
+                           value="@Model.JobTicket.DateCreated.ToString("yyyy-MM-dd")"
+                           disabled />
+
+                    <input type="hidden" asp-for="JobTicket.DateCreated" />
+                </div>
+
+            </div>
+
+            <!-- Job Type -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Job Type <span class="text-danger">*</span>
+                </label>
+
+                <select asp-for="JobTicket.JobType" id="jobTypeSelect" class="form-select" required>
+                    <option value="">Select a job type</option>
+                    @foreach (var type in Model.JobTypeOptions)
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </select>
+
+                <span asp-validation-for="JobTicket.JobType" class="text-danger"></span>
+            </div>
+
+            <!-- Client Info (auto-cleared/hidden when Job Type = Maintenance) -->
+            <div class="row mb-3" id="clientInfoGroup">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                        Full Name (Client) <span class="text-danger">*</span>
+                    </label>
+
+                    <input asp-for="JobTicket.ClientFullName"
+                           id="clientFullNameInput"
+                           class="form-control"
+                           placeholder="e.g. Juan Dela Cruz"
+                           required />
+
+                    <span asp-validation-for="JobTicket.ClientFullName" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                        Primary Number <span class="text-danger">*</span>
+                    </label>
+
+                    <input asp-for="JobTicket.PrimaryNumber"
+                           id="primaryNumberInput"
+                           class="form-control"
+                           placeholder="09xx xxx xxxx"
+                           required />
+
+                    <span asp-validation-for="JobTicket.PrimaryNumber" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">
+                        Secondary Number
+                    </label>
+
+                    <input asp-for="JobTicket.SecondaryNumber"
+                           id="secondaryNumberInput"
+                           class="form-control"
+                           placeholder="Optional" />
+
+                    <span asp-validation-for="JobTicket.SecondaryNumber" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Fiber Plan (Installation) / Description (Repair, Maintenance) + Date -->
+            <div class="row mb-3">
+                <div class="col-md-6" id="fiberPlanGroup">
+                    <label class="form-label fw-semibold">
+                        Fiber Plan <span class="text-danger">*</span>
+                    </label>
+
+                    <select asp-for="JobTicket.FiberPlan" id="fiberPlanSelect" class="form-select">
+                        <option value="">Select a plan</option>
+                        @foreach (var plan in Model.FiberPlanOptions)
+                        {
+                            <option value="@plan">₱@plan / month</option>
+                        }
+                    </select>
+
+                    <span asp-validation-for="JobTicket.FiberPlan" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 d-none" id="descriptionGroup">
+                    <label class="form-label fw-semibold">
+                        Description <span class="text-danger">*</span>
+                    </label>
+
+                    <textarea asp-for="JobTicket.Description"
+                              id="descriptionInput"
+                              class="form-control"
+                              rows="1"
+                              maxlength="500"
+                              placeholder="Describe the job"></textarea>
+
+                    <span asp-validation-for="JobTicket.Description" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" id="serviceDateLabel">
+                        Date of Installation <span class="text-danger">*</span>
+                    </label>
+
+                    <input asp-for="JobTicket.ServiceDate"
+                           type="date"
+                           min="@DateTime.Now.ToString("yyyy-MM-dd")"
+                           value="@Model.JobTicket.ServiceDate.ToString("yyyy-MM-dd")"
+                           class="form-control"
+                           required />
+
+                    <span asp-validation-for="JobTicket.ServiceDate" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="fw-semibold mb-2">
+                        📍 Job Location <span class="text-danger">*</span>
+                    </h5>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Address</label>
+                        <input asp-for="JobTicket.LocationAddress"
+                               id="locationAddressInput"
+                               class="form-control"
+                               placeholder="Enter the job site address"
+                               required />
+                        <span asp-validation-for="JobTicket.LocationAddress" class="text-danger"></span>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold">Nearest Landmark</label>
+                        <input asp-for="JobTicket.NearestLandmark"
+                               id="nearestLandmarkInput"
+                               class="form-control"
+                               placeholder="e.g. Near the barangay hall" />
+                        <span asp-validation-for="JobTicket.NearestLandmark" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Assignees -->
+            <div class="card mb-4">
+                <div class="card-body">
+
+                    <h5 class="fw-semibold mb-1">
+                        👷 Add Assignees <span class="text-danger">*</span>
+                    </h5>
+                    <p class="text-muted small mb-3">Only Field Technicians can be assigned to a job ticket. Assign at least 2, and pick one to be the leader.</p>
+
+                    <div class="row">
+                        <div class="col-md-10">
+                            <select id="employeeSelect" class="form-select">
+                                <option value="">Select a field technician</option>
+                                @foreach (var emp in Model.FieldTechnicianList)
+                                {
+                                    <option value="@emp.EmployeeId">@emp.FullName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <button type="button" id="addEmployeeBtn" class="btn btn-primary w-100">
+                                + Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Selected Employees -->
+                    <div id="selectedEmployees" class="mt-3 d-flex flex-column gap-2">
+                        <span class="text-muted small" id="noEmployeesMsg">No field technicians added yet.</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="text-end">
+                <a asp-page="Index" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+
+                <button type="submit" class="btn btn-primary">
+                    Save Job Ticket
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script src="~/js/address-autocomplete.js"></script>
+    <script>
+        (function () {
+            // ---------------- ADDRESS AUTOCOMPLETE ----------------
+            // Biased toward Cebu/Philippines; users can still search anywhere.
+            // initAddressAutocomplete(document.getElementById('locationAddressInput'), { lat: 10.3157, lon: 123.8854 });
+            // initAddressAutocomplete(document.getElementById('nearestLandmarkInput'), { lat: 10.3157, lon: 123.8854 });
+
+            // ---------------- JOB TYPE TOGGLE ----------------
+            const jobTypeSelect = document.getElementById('jobTypeSelect');
+            const fiberPlanGroup = document.getElementById('fiberPlanGroup');
+            const fiberPlanSelect = document.getElementById('fiberPlanSelect');
+            const descriptionGroup = document.getElementById('descriptionGroup');
+            const descriptionInput = document.getElementById('descriptionInput');
+            const serviceDateLabel = document.getElementById('serviceDateLabel');
+
+            // Client Info (Full Name / Primary / Secondary) — only collected for
+            // non-Maintenance jobs. Switching to Maintenance clears whatever was typed.
+            const clientInfoGroup = document.getElementById('clientInfoGroup');
+            const clientFullNameInput = document.getElementById('clientFullNameInput');
+            const primaryNumberInput = document.getElementById('primaryNumberInput');
+            const secondaryNumberInput = document.getElementById('secondaryNumberInput');
+
+            function applyClientInfoVisibility(type) {
+                if (type === 'Maintenance') {
+                    clientInfoGroup.classList.add('d-none');
+                    clientFullNameInput.value = '';
+                    primaryNumberInput.value = '';
+                    secondaryNumberInput.value = '';
+                    clientFullNameInput.removeAttribute('required');
+                    primaryNumberInput.removeAttribute('required');
+                } else {
+                    clientInfoGroup.classList.remove('d-none');
+                    clientFullNameInput.setAttribute('required', 'required');
+                    primaryNumberInput.setAttribute('required', 'required');
+                }
+            }
+
+            function applyJobType() {
+                const type = jobTypeSelect.value;
+                if (type === 'Installation') {
+                    fiberPlanGroup.classList.remove('d-none');
+                    descriptionGroup.classList.add('d-none');
+                    fiberPlanSelect.setAttribute('required', 'required');
+                    descriptionInput.removeAttribute('required');
+                    serviceDateLabel.innerHTML = 'Date of Installation <span class="text-danger">*</span>';
+                } else if (type === 'Repair') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Repair <span class="text-danger">*</span>';
+                } else if (type === 'Inspection') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Inspection <span class="text-danger">*</span>';
+                } else if (type === 'Maintenance') {
+                    fiberPlanGroup.classList.add('d-none');
+                    descriptionGroup.classList.remove('d-none');
+                    fiberPlanSelect.removeAttribute('required');
+                    descriptionInput.setAttribute('required', 'required');
+                    serviceDateLabel.innerHTML = 'Date of Maintenance <span class="text-danger">*</span>';
+                } else {
+                    fiberPlanGroup.classList.remove('d-none');
+                    descriptionGroup.classList.add('d-none');
+                    serviceDateLabel.innerHTML = 'Date <span class="text-danger">*</span>';
+                }
+                applyClientInfoVisibility(type);
+            }
+
+            jobTypeSelect.addEventListener('change', applyJobType);
+            applyJobType();
+
+            // ---------------- ASSIGNEES + LEADER ----------------
+            const employeeSelect = document.getElementById('employeeSelect');
+            const addEmployeeBtn = document.getElementById('addEmployeeBtn');
+            const selectedEmployeesDiv = document.getElementById('selectedEmployees');
+            const noEmployeesMsg = document.getElementById('noEmployeesMsg');
+
+            // id -> name, preserves insertion order
+            const addedEmployees = new Map();
+            let leaderId = null;
+
+            // Once a technician is selected, their option disappears from the
+            // dropdown; removing them from the list restores it in its original
+            // (alphabetical) position.
+            const originalOptions = Array.from(employeeSelect.options).filter(o => o.value !== '');
+            const optionMap = new Map();
+            originalOptions.forEach(o => optionMap.set(o.value, o));
+
+            function hideOptionFromDropdown(id) {
+                const opt = optionMap.get(id);
+                if (opt && opt.parentElement === employeeSelect) {
+                    employeeSelect.removeChild(opt);
+                }
+            }
+
+            function restoreOptionToDropdown(id) {
+                const opt = optionMap.get(id);
+                if (!opt) return;
+                const idx = originalOptions.indexOf(opt);
+                let inserted = false;
+                for (let i = idx + 1; i < originalOptions.length; i++) {
+                    const nextOpt = originalOptions[i];
+                    if (nextOpt.parentElement === employeeSelect) {
+                        employeeSelect.insertBefore(opt, nextOpt);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    employeeSelect.appendChild(opt);
+                }
+            }
+
+            function renderEmployeeRow(id, name) {
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-center gap-2 border rounded p-2';
+                row.dataset.employeeId = id;
+                row.innerHTML = `
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="leaderRadio" id="leaderRadio-${id}" ${leaderId === id ? 'checked' : ''}>
+                        <label class="form-check-label small" for="leaderRadio-${id}">Leader</label>
+                    </div>
+                    <span class="flex-grow-1" id="empName-${id}"></span>
+                    <span class="text-danger" style="cursor:pointer;" title="Remove">&times;</span>
+                    <input type="hidden" name="SelectedEmployeeIds" value="${id}" />
+                `;
+
+                row.querySelector('input[type=radio]').addEventListener('change', function () {
+                    leaderId = id;
+                    document.getElementById('leaderEmployeeIdInput').value = id;
+                    refreshLeaderTags();
+                });
+
+                row.querySelector('.text-danger').addEventListener('click', function () {
+                    addedEmployees.delete(id);
+                    row.remove();
+                    restoreOptionToDropdown(id);
+                    if (leaderId === id) {
+                        leaderId = null;
+                        document.getElementById('leaderEmployeeIdInput').value = '';
+                        // Auto-promote the next remaining technician to leader, if any
+                        const remaining = [...addedEmployees.keys()];
+                        if (remaining.length > 0) {
+                            leaderId = remaining[0];
+                            document.getElementById('leaderEmployeeIdInput').value = leaderId;
+                            const nextRadio = document.getElementById(`leaderRadio-${leaderId}`);
+                            if (nextRadio) nextRadio.checked = true;
+                        }
+                    }
+                    refreshLeaderTags();
+                    if (addedEmployees.size === 0) {
+                        noEmployeesMsg.style.display = '';
+                    }
+                });
+
+                selectedEmployeesDiv.appendChild(row);
+                refreshLeaderTags();
+            }
+
+            // Only the currently Selected/assigned leader gets the "Leader" tag
+            // next to their name — everyone else just shows their plain name.
+            function refreshLeaderTags() {
+                addedEmployees.forEach(function (name, id) {
+                    const nameSpan = document.getElementById(`empName-${id}`);
+                    if (!nameSpan) return;
+                    nameSpan.innerHTML = (id === leaderId)
+                        ? `${name} <span class="badge bg-primary ms-1">Leader</span>`
+                        : name;
+                });
+            }
+
+            // Hidden input carrying the chosen leader's EmployeeId
+            const leaderHidden = document.createElement('input');
+            leaderHidden.type = 'hidden';
+            leaderHidden.id = 'leaderEmployeeIdInput';
+            leaderHidden.name = 'LeaderEmployeeId';
+            leaderHidden.value = '';
+            document.getElementById('ticketForm').appendChild(leaderHidden);
+
+            addEmployeeBtn.addEventListener('click', function () {
+                const id = employeeSelect.value;
+                const name = employeeSelect.options[employeeSelect.selectedIndex].text;
+
+                if (!id) return;
+                if (addedEmployees.has(id)) return;
+
+                addedEmployees.set(id, name);
+                noEmployeesMsg.style.display = 'none';
+
+                renderEmployeeRow(id, name);
+                hideOptionFromDropdown(id);
+
+                // First technician added is auto-selected as leader
+                if (addedEmployees.size === 1) {
+                    leaderId = id;
+                    leaderHidden.value = id;
+                    document.getElementById(`leaderRadio-${id}`).checked = true;
+                    refreshLeaderTags();
+                }
+
+                employeeSelect.value = '';
+            });
+
+            document.getElementById('ticketForm').addEventListener('submit', function (e) {
+                if (addedEmployees.size < 2) {
+                    e.preventDefault();
+                    alert('Please assign at least 2 field technicians.');
+                    return;
+                }
+                if (!leaderHidden.value) {
+                    e.preventDefault();
+                    alert('Please choose a leader among the assigned field technicians.');
+                }
+            });
+        })();
+    </script>
+}

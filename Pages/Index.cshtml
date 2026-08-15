@@ -1,0 +1,62 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_Layout";
+}
+
+<h2 class="mb-4">Dashboard</h2>
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon"><i class="bi bi-building"></i></div>
+                <div><div class="text-muted small">Departments</div><h3 class="mb-0">@Model.DepartmentCount</h3></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon"><i class="bi bi-people"></i></div>
+                <div><div class="text-muted small">Employees</div><h3 class="mb-0">@Model.EmployeeCount</h3></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon"><i class="bi bi-list-check"></i></div>
+                <div><div class="text-muted small">Active Criteria</div><h3 class="mb-0">@Model.CriteriaCount</h3></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon"><i class="bi bi-kanban"></i></div>
+                <div><div class="text-muted small">Active Office Tasks</div><h3 class="mb-0">@Model.ActiveOfficeTaskCount</h3></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+                <div><div class="text-muted small">Overdue Office Tasks</div><h3 class="mb-0">@Model.OverdueOfficeTaskCount</h3></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-stat p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="icon text-success"><i class="bi bi-check2-circle"></i></div>
+                <div><div class="text-muted small">Completed Office Tasks</div><h3 class="mb-0">@Model.CompletedOfficeTaskCount</h3></div>
+            </div>
+        </div>
+    </div>
+</div>
+

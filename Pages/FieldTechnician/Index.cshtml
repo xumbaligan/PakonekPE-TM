@@ -1,0 +1,87 @@
+﻿@page
+@model TM_PE.Pages.FieldTechnician.IndexModel
+
+@{
+    ViewData["Title"] = "My Job Orders";
+    Layout = "_FieldTechnicianLayout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="fw-bold mb-0"><i class="bi bi-tools me-1"></i> My Job Orders</h3>
+        <div class="text-muted small">Viewing as <strong>@Model.CurrentEmployee.FullName</strong></div>
+    </div>
+
+    <form method="post" asp-page-handler="SwitchEmployee">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left-right"></i> Switch Technician
+        </button>
+    </form>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+
+        @if (!Model.AssignedJobOrders.Any())
+        {
+            <div class="p-4 text-muted text-center">You don't have any assigned job orders yet.</div>
+        }
+        else
+        {
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr class="text-muted small">
+                        <th class="ps-3">Job Order</th>
+                        <th>Job Type</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Your Role</th>
+                        <th class="text-end pe-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ticket in Model.AssignedJobOrders)
+                    {
+                        var badgeClass = ticket.Status switch
+                        {
+                            "Closed" => "bg-primary-subtle text-primary",
+                            "Completed" => "bg-success-subtle text-success",
+                            "In Progress" => "bg-info-subtle text-info",
+                            "Cancelled" => "bg-danger-subtle text-danger",
+                            "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
+                            _ => "bg-secondary-subtle text-secondary"
+                        };
+                        var isLeader = Model.LeaderOn.Contains(ticket.JobTicketID);
+
+                        <tr>
+                            <td class="ps-3">
+                                <div class="fw-semibold">Ticket #@ticket.TicketNumber</div>
+                            </td>
+                            <td>@ticket.JobType</td>
+                            <td>@(ticket.JobType == TM_PE.Model.JobTypes.Maintenance ? "—" : ticket.ClientFullName)</td>
+                            <td>@ticket.ServiceDate.ToString("M/d/yyyy")</td>
+                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@ticket.Status</span></td>
+                            <td>
+                                @if (isLeader)
+                                {
+                                    <span class="badge bg-primary">Leader</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-dark border">Member</span>
+                                }
+                            </td>
+                            <td class="text-end pe-3">
+                                <a asp-page="./Details" asp-route-id="@ticket.JobTicketID" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+    </div>
+</div>

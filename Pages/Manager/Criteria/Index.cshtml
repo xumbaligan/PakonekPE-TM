@@ -1,0 +1,109 @@
+﻿@page
+@model TM_PE.Pages.Manager.Criteria.IndexModel
+@{
+    ViewData["Title"] = "Criteria";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Performance Criteria</h2>
+    <span class="badge badge-soft-primary"><i class="bi bi-eye"></i> View Only</span>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input class="form-control" name="search" id="liveSearch"
+               value="@Model.Search" placeholder="Search criteria..." />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="liveRole">
+            <option value="">All Roles</option>
+            <option value="officestaff">Office Staff</option>
+            <option value="fieldtechnician">Field Technician</option>
+        </select>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Criteria</th>
+                <th>Description</th>
+                <th>Role Type</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Items.Any())
+            {
+                <tr id="emptyRow">
+                    <td colspan="4" class="text-center text-muted py-4">No criteria defined</td>
+                </tr>
+            }
+            else
+            {
+                <tr id="emptyRow" style="display:none;">
+                    <td colspan="4" class="text-center text-muted py-4">No criteria defined</td>
+                </tr>
+            }
+
+            @foreach (var c in Model.Items)
+            {
+                <tr data-name="@c.CriteriaName.ToLower()"
+                    data-description="@(c.Description?.ToLower() ?? "")"
+                    data-role="@c.RoleType.ToString().ToLower()">
+                    <td><strong>@c.CriteriaName</strong></td>
+                    <td><span class="text-muted">@c.Description</span></td>
+                    <td><span class="badge badge-soft-primary">@c.RoleType</span></td>
+                    <td>
+                        @if (c.IsActive)
+                        {
+                            <span class="badge badge-soft-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-soft-warning">Inactive</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const searchInput = document.getElementById('liveSearch');
+    const roleSelect = document.getElementById('liveRole');
+    const rows = document.querySelectorAll('tbody tr[data-name]');
+
+    function filterTable() {
+        const searchVal = searchInput.value.toLowerCase().trim();
+        const roleVal = roleSelect.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const name = row.dataset.name || '';
+            const description = row.dataset.description || '';
+            const role = row.dataset.role || '';
+
+            const matchesSearch = name.includes(searchVal) || description.includes(searchVal);
+            const matchesRole = roleVal === '' || role === roleVal;
+
+            if (matchesSearch && matchesRole) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const emptyRow = document.getElementById('emptyRow');
+        if (emptyRow) {
+            emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+        }
+    }
+
+    searchInput.addEventListener('input', filterTable);
+    roleSelect.addEventListener('change', filterTable);
+</script>

@@ -24,6 +24,12 @@ namespace TM_PE.Pages.Manager.JobTickets
         [BindProperty]
         public string? RescheduleReason { get; set; }
 
+        // The technician the manager wants to designate as team leader. Only
+        // honored while the ticket is still Pending — the assigned team itself
+        // can't be changed from this page, only who among them leads.
+        [BindProperty]
+        public int? LeaderEmployeeId { get; set; }
+
         // Used by the page to detect whether the submitted date actually changed,
         // both for rendering the hidden comparison field and for re-rendering it
         // correctly if validation fails.
@@ -51,6 +57,8 @@ namespace TM_PE.Pages.Manager.JobTickets
             }
 
             // Completed (and Closed) tickets are locked — no further edits allowed.
+            // NOTE: a pending Reschedule Request does NOT lock the manager out —
+            // they're the one who needs to act on it (see OnPostAsync).
             if (jobTicket.IsLockedFromEditing)
             {
                 return RedirectToPage("Details", new { id });
@@ -58,6 +66,7 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             JobTicket = jobTicket;
             OriginalServiceDate = jobTicket.ServiceDate;
+            LeaderEmployeeId = jobTicket.Assignments.FirstOrDefault(a => a.IsLeader)?.EmployeeID;
 
             return Page();
         }
@@ -93,14 +102,44 @@ namespace TM_PE.Pages.Manager.JobTickets
                 return RedirectToPage("Details", new { id = ticket.JobTicketID });
             }
 
+            // Captured before any mutations below — used both to gate the leader
+            // change (only allowed while Pending) and to know whether this save is
+            // resolving a pending Reschedule Request from the field technician.
+            bool wasPending = ticket.Status == JobTicketStatuses.Pending;
+            bool wasRescheduleRequest = ticket.Status == JobTicketStatuses.RescheduleRequest;
+
             OriginalServiceDate = ticket.ServiceDate;
 
             // Changing the service date reschedules the job — require a reason so
-            // the field technician knows why the date moved.
+            // the field technician knows why the date moved. This also doubles as
+            // how the manager resolves a pending Reschedule Request: whether the
+            // date is being changed for the first time or the manager is acting on
+            // a request the field technician leader submitted, it's the same action.
             bool dateChanged = JobTicket.ServiceDate.Date != ticket.ServiceDate.Date;
-            if (dateChanged && string.IsNullOrWhiteSpace(RescheduleReason))
+
+            // A pending Reschedule Request can only be resolved by the manager
+            // actually setting a (new) service date here.
+            if (wasRescheduleRequest && !dateChanged)
             {
-                ModelState.AddModelError("RescheduleReason", "Please provide a reason for rescheduling the date.");
+                ModelState.AddModelError(
+                    "JobTicket.ServiceDate",
+                    "This job order has a pending reschedule request. Please set a new service date to resolve it.");
+            }
+
+            // The leader can only be changed while the ticket is Pending, and only
+            // among the technicians already assigned — this page can't add/remove
+            // assignees.
+            if (wasPending && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
+            {
+                var assignedIds = await _context.JobTicketAssignments
+                    .Where(a => a.JobTicketID == ticket.JobTicketID)
+                    .Select(a => a.EmployeeID)
+                    .ToListAsync();
+
+                if (!assignedIds.Contains(LeaderEmployeeId.Value))
+                {
+                    ModelState.AddModelError(string.Empty, "The leader must be one of the technicians already assigned to this job order.");
+                }
             }
 
             if (!JobTypes.Allowed.Contains(JobTicket.JobType))
@@ -157,49 +196,93 @@ namespace TM_PE.Pages.Manager.JobTickets
                     JobTicket.Assignments = reload.Assignments;
                     JobTicket.TicketNumber = reload.TicketNumber;
                     JobTicket.DateCreated = reload.DateCreated;
+                    JobTicket.Status = reload.Status;
                     OriginalServiceDate = reload.ServiceDate;
                 }
 
                 return Page();
             }
 
-            // If the manager changed the date, log it and reset the ticket to
-            // Rescheduled so the field technician sees a fresh cycle — the old
-            // remarks and current photos/files are archived to a history entry
-            // instead of being lost.
+            // If the manager changed the date — whether as a direct reschedule or
+            // to resolve a pending Reschedule Request from the field technician
+            // leader — log it and archive whatever remarks/photos this cycle
+            // already had, then reset the ticket to Pending so the leader starts
+            // fresh on the new date. Archiving happens into BOTH a Reschedule
+            // History entry (manager-facing) and a Submission History entry, so
+            // this reschedule also shows up in the field technician leader's own
+            // "History of Submission" list.
             if (dateChanged)
             {
-                var history = new Model.JobTicketRescheduleHistory
+                var currentSubmissions = await _context.JobTicketSubmissions
+                    .Where(s => s.JobTicketID == ticket.JobTicketID
+                        && s.RescheduleHistoryID == null
+                        && s.SubmissionHistoryID == null)
+                    .ToListAsync();
+
+                var rescheduleHistory = new Model.JobTicketRescheduleHistory
                 {
                     JobTicketID = ticket.JobTicketID,
                     OldServiceDate = ticket.ServiceDate,
                     NewServiceDate = JobTicket.ServiceDate,
-                    Reason = RescheduleReason!.Trim(),
+                    Reason = null,
                     PreviousStatus = ticket.Status,
                     PreviousRemarks = ticket.Remarks,
                     DateChanged = DateTime.Now
                 };
 
-                var currentSubmissions = await _context.JobTicketSubmissions
-                    .Where(s => s.JobTicketID == ticket.JobTicketID && s.RescheduleHistoryID == null)
-                    .ToListAsync();
+                var submissionHistory = new Model.JobTicketSubmissionHistory
+                {
+                    JobTicketID = ticket.JobTicketID,
+                    Status = "Rescheduled by Manager",
+                    Remarks = null,
+                    DateChanged = DateTime.Now
+                };
 
                 foreach (var sub in currentSubmissions)
                 {
-                    history.ArchivedSubmissions.Add(sub);
+                    rescheduleHistory.ArchivedSubmissions.Add(sub);
+                    submissionHistory.ArchivedSubmissions.Add(sub);
                 }
 
-                _context.JobTicketRescheduleHistories.Add(history);
+                _context.JobTicketRescheduleHistories.Add(rescheduleHistory);
+                _context.JobTicketSubmissionHistories.Add(submissionHistory);
+                await _context.SaveChangesAsync();
 
+                foreach (var sub in currentSubmissions)
+                {
+                    sub.RescheduleHistoryID = rescheduleHistory.JobTicketRescheduleHistoryID;
+                    sub.SubmissionHistoryID = submissionHistory.JobTicketSubmissionHistoryID;
+                }
+
+                // Pending gives the leader a clean slate on the new date, whether
+                // this was a direct reschedule or resolving their own request.
                 ticket.Status = JobTicketStatuses.Rescheduled;
                 ticket.Remarks = null;
             }
 
-            // Assignees (and who leads them) are intentionally locked after creation —
-            // only the ticket's own details can change here. Status is never copied
-            // from the posted JobTicket object (it isn't collected on this form) —
-            // it only changes via the reschedule logic above, or elsewhere (the field
-            // technician workflow, or the manager's Close action).
+            // The leader can only be re-designated while the ticket was Pending —
+            // the assigned team itself is still fixed and can't be changed here.
+            if (wasPending && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
+            {
+                var assignments = await _context.JobTicketAssignments
+                    .Where(a => a.JobTicketID == ticket.JobTicketID)
+                    .ToListAsync();
+
+                if (assignments.Any(a => a.EmployeeID == LeaderEmployeeId.Value))
+                {
+                    foreach (var a in assignments)
+                    {
+                        a.IsLeader = a.EmployeeID == LeaderEmployeeId.Value;
+                    }
+                }
+            }
+
+            // Assignees themselves are intentionally locked after creation — only
+            // who leads them (above) and the ticket's own details can change here.
+            // Status is never copied from the posted JobTicket object (it isn't
+            // collected on this form) — it only changes via the reschedule logic
+            // above, or elsewhere (the field technician workflow, or the manager's
+            // Close action).
             ticket.JobType = JobTicket.JobType;
             ticket.ClientFullName = JobTicket.ClientFullName;
             ticket.PrimaryNumber = JobTicket.PrimaryNumber;

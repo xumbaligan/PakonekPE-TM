@@ -9,7 +9,7 @@
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
-        "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
+        "Reschedule Request" => "bg-warning-subtle text-warning-emphasis",
         _ => "bg-secondary-subtle text-secondary"
     };
 }
@@ -124,7 +124,7 @@
 </div>
 
 @* ===================== STATUS + REMARKS (leader only) ===================== *@
-@if (Model.IsLeader && !Model.JobTicket.IsLockedFromEditing)
+@if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
 {
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body p-4">
@@ -138,9 +138,10 @@
                             @foreach (var opt in TM_PE.Pages.FieldTechnician.DetailsModel.StatusOptions)
                             {
                                 @* Once work has left Pending it can never go back, so Pending is
-                                   only offered while it's still the current status. Rescheduled can
-                                   be selected by the team leader at any time (in addition to being
-                                   set automatically when a manager edits the service date). *@
+                                   only offered while it's still the current status. Reschedule
+                                   Request can be selected by the team leader at any time — doing so
+                                   locks the ticket from further field-technician edits until the
+                                   manager approves/acts on the request. *@
                                 if (opt == "Pending" && Model.JobTicket.Status != "Pending")
                                 {
                                     continue;
@@ -177,6 +178,24 @@
         </div>
     </div>
 }
+else if (Model.IsLeader && Model.JobTicket.Status == "Reschedule Request")
+{
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body p-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-flag me-1"></i> Update Status</h6>
+            <div class="alert alert-warning mb-0">
+                <i class="bi bi-hourglass-split me-1"></i>
+                A reschedule request is pending the manager's approval. You won't be able to
+                update the status, remarks, or files until the manager acts on it.
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
+            {
+                <div class="text-muted small mt-2">Reason submitted</div>
+                <div>@Model.JobTicket.Remarks</div>
+            }
+        </div>
+    </div>
+}
 else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
 {
     <div class="card shadow-sm border-0 mb-3">
@@ -195,7 +214,8 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
-        "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
+        "Reschedule Request" => "bg-warning-subtle text-warning-emphasis",
+        "Rescheduled by Manager" => "bg-primary-subtle text-primary",
         _ => "bg-secondary-subtle text-secondary"
     };
 }
@@ -346,7 +366,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                 }
             </p>
 
-            @if (Model.IsLeader && !Model.JobTicket.IsLockedFromEditing)
+            @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
             {
                 <form method="post" enctype="multipart/form-data" asp-page-handler="UploadSubmission" id="uploadSubmissionForm">
                     <input type="hidden" name="jobTicketId" value="@Model.JobTicket.JobTicketID" />
@@ -381,7 +401,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                         var isImage = TM_PE.Pages.FieldTechnician.DetailsModel.ImageExtensions.Contains(ext);
                         <div class="col-md-3 col-sm-4 col-6">
                             <div class="card h-100 position-relative">
-                                @if (Model.IsLeader && !Model.JobTicket.IsLockedFromEditing)
+                                @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
                                 {
                                     <form method="post" asp-page-handler="DeleteSubmission"
                                           onsubmit="return confirm('Remove this file?');"
@@ -425,9 +445,21 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
     </div>
 </div>
 <div class="d-flex justify-content-end gap-2 mb-4">
-    @if (Model.IsLeader && !Model.JobTicket.IsLockedFromEditing)
+    @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
     {
-        <a asp-page="./Index" class="btn btn-outline-secondary">Cancel</a>
+        <form method="post"
+              asp-page-handler="CancelEdit"
+              class="d-inline">
+            <input type="hidden"
+                   name="jobTicketId"
+                   value="@Model.JobTicket.JobTicketID" />
+
+            <button type="submit"
+                    class="btn btn-outline-secondary"
+                    onclick="return confirm('Cancel this edit? Any files uploaded during this session will be removed.');">
+                Cancel
+            </button>
+        </form>
         <button type="submit" form="statusForm" class="btn btn-primary">Save</button>
     }
     else

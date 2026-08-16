@@ -21,8 +21,9 @@ namespace TM_PE.Model
     }
 
     // Job ticket lifecycle. "Closed" is a manager-only, terminal state — once a
-    // ticket is Closed it is locked from further edits. "Rescheduled" is also
-    // manager-driven: set automatically when the manager edits the service date.
+    // ticket is Closed it is locked from further edits. "Reschedule Request" can
+    // be set either by the manager directly (immediate reschedule) or requested
+    // by the field technician leader (awaiting manager approval).
     public static class JobTicketStatuses
     {
         public const string Pending = "Pending";
@@ -30,9 +31,10 @@ namespace TM_PE.Model
         public const string Completed = "Completed";
         public const string Cancelled = "Cancelled";
         public const string Closed = "Closed";
+        public const string RescheduleRequest = "Reschedule Request";
         public const string Rescheduled = "Rescheduled";
 
-        public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, Closed, Rescheduled };
+        public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, Closed, RescheduleRequest };
     }
 
     [Table("tbl_jobticket")]
@@ -103,6 +105,16 @@ namespace TM_PE.Model
         [NotMapped]
         public bool IsLockedFromEditing =>
             Status == JobTicketStatuses.Completed || Status == JobTicketStatuses.Closed;
+
+        // Field technicians additionally cannot upload files or change
+        // Status/Remarks while a Reschedule Request they submitted is still
+        // awaiting the manager's decision — the manager must approve/act on it
+        // (directly reschedule) before the leader can resume updating the ticket.
+        // The manager themselves is NOT subject to this extra lock, since they're
+        // the one who needs to act on the request.
+        [NotMapped]
+        public bool IsLockedFromFieldTechnicianEditing =>
+            IsLockedFromEditing || Status == JobTicketStatuses.RescheduleRequest;
 
         // Label shown above the ServiceDate field/value, based on JobType.
         [NotMapped]

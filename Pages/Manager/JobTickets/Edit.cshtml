@@ -65,9 +65,9 @@
                 </div>
             </div>
 
-            <!-- Fiber Plan (Installation) / Description (Repair, Maintenance) + Date + Status -->
+            <!-- Fiber Plan (Installation) / Description (Repair, Maintenance, Inspection) + Date -->
             <div class="row mb-3">
-                <div class="col-md-4" id="fiberPlanGroup">
+                <div class="col-md-6" id="fiberPlanGroup">
                     <label class="form-label fw-semibold">Fiber Plan <span class="text-danger">*</span></label>
                     <select asp-for="JobTicket.FiberPlan" id="fiberPlanSelect" class="form-select">
                         <option value="">Select a plan</option>
@@ -79,13 +79,13 @@
                     <span asp-validation-for="JobTicket.FiberPlan" class="text-danger"></span>
                 </div>
 
-                <div class="col-md-4 d-none" id="descriptionGroup">
+                <div class="col-md-6 d-none" id="descriptionGroup">
                     <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
                     <textarea asp-for="JobTicket.Description" id="descriptionInput" class="form-control" rows="1" maxlength="500"></textarea>
                     <span asp-validation-for="JobTicket.Description" class="text-danger"></span>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold" id="serviceDateLabel">Date of Installation <span class="text-danger">*</span></label>
                     <input asp-for="JobTicket.ServiceDate" type="date" id="serviceDateInput"
                            value="@Model.JobTicket.ServiceDate.ToString("yyyy-MM-dd")"
@@ -93,31 +93,18 @@
                     <input type="hidden" id="originalServiceDate" value="@Model.OriginalServiceDate.ToString("yyyy-MM-dd")" />
                     <span asp-validation-for="JobTicket.ServiceDate" class="text-danger"></span>
                 </div>
-
-                @* <div class="col-md-4">
-                    <label class="form-label fw-semibold">Status</label>
-                    <select asp-for="JobTicket.Status" class="form-select">
-                        <option value="Pending">Pending</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                </div> *@
             </div>
 
-            <!-- Reschedule Reason (shown only when the date above is changed) -->
-            <div class="row mb-3 d-none" id="rescheduleReasonRow">
-                <div class="col-12">
-                    <div class="alert alert-warning mb-2">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        Changing the date will mark this job order as <strong>Rescheduled</strong> and
-                        the assigned field technician's current remarks and photos/files will be
-                        archived so they can start fresh for the new date.
-                    </div>
-                    <label class="form-label fw-semibold">Reason for Reschedule <span class="text-danger">*</span></label>
-                    <textarea asp-for="RescheduleReason" id="rescheduleReasonInput" class="form-control" rows="2" maxlength="500"></textarea>
-                    <span asp-validation-for="RescheduleReason" class="text-danger"></span>
+            @if (Model.JobTicket.Status == "Reschedule Request")
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-hourglass-split me-1"></i>
+                    Changing the date will mark this job order as
+                    <strong>Rescheduled</strong> and start a new technician cycle.
+                    The assigned field technician's current remarks and photos/files
+                    will be archived so they can start fresh for the new date.
                 </div>
-            </div>
-
+            }
             <!-- Location -->
             <div class="card mb-3">
                 <div class="card-body">
@@ -137,26 +124,68 @@
                 </div>
             </div>
 
-            <!-- Assignees (read-only) -->
+            <!-- Assignees (fixed team; leader can be changed only while Pending) -->
             <div class="card mb-4">
                 <div class="card-body">
                     <h5 class="fw-semibold mb-3">👷 Assigned Field Technicians</h5>
                     @if (Model.JobTicket.Assignments != null && Model.JobTicket.Assignments.Any())
                     {
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
-                            {
-                                <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
-                                    @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
-                                </span>
-                            }
-                        </div>
+                        @if (Model.JobTicket.Status == "Pending")
+                        {
+                            <p class="text-muted small mb-3">
+                                Choose who leads this job order. The assigned team itself can't be
+                                added to or removed from here — only who leads them.
+                            </p>
+                            <div id="assignedEmployees" class="d-flex flex-column gap-2">
+                                @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
+                                {
+                                    <div class="d-flex align-items-center gap-2 border rounded p-2" data-employee-id="@a.EmployeeID">
+                                        <div class="form-check mb-0">
+                                            <input class="form-check-input leaderRadio" type="radio"
+                                                   name="LeaderEmployeeId" id="leaderRadio-@a.EmployeeID"
+                                                   value="@a.EmployeeID"
+                                                   checked="@(Model.LeaderEmployeeId == a.EmployeeID)" />
+                                            <label class="form-check-label small" for="leaderRadio-@a.EmployeeID">Leader</label>
+                                        </div>
+                                        <span class="flex-grow-1" id="empName-@a.EmployeeID">
+                                            @a.Employee!.FullName
+                                            <span class="badge bg-primary ms-1 leaderTag @(Model.LeaderEmployeeId == a.EmployeeID ? "" : "d-none")">Leader</span>
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
+                                {
+                                    <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
+                                        @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
+                                    </span>
+                                }
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">The leader can only be changed while this job order is Pending.</p>
+                        }
                     }
                     else
                     {
                         <span class="text-muted">No assignees</span>
                     }
-                    <p class="text-muted small mt-2 mb-0">Assignees are fixed at creation and can't be changed from this page.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Leader Remarks
+                        </label>
+
+                        <textarea class="form-control"
+                                  rows="3"
+                                  readonly>@Model.JobTicket.Remarks</textarea>
+
+                        <div class="form-text">
+                            Remarks submitted by the field technician leader.
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-2 mb-0">Assignees are fixed at creation and can't be added or removed from this page.</p>
                 </div>
             </div>
 
@@ -248,25 +277,27 @@
             jobTypeSelect.addEventListener('change', applyJobType);
             applyJobType();
 
-            // ---------------- RESCHEDULE REASON TOGGLE ----------------
-            const serviceDateInput = document.getElementById('serviceDateInput');
-            const originalServiceDate = document.getElementById('originalServiceDate');
-            const rescheduleReasonRow = document.getElementById('rescheduleReasonRow');
-            const rescheduleReasonInput = document.getElementById('rescheduleReasonInput');
-
-            function applyRescheduleVisibility() {
-                if (serviceDateInput.value !== originalServiceDate.value) {
-                    rescheduleReasonRow.classList.remove('d-none');
-                    rescheduleReasonInput.setAttribute('required', 'required');
-                } else {
-                    rescheduleReasonRow.classList.add('d-none');
-                    rescheduleReasonInput.removeAttribute('required');
-                }
-            }
 
             serviceDateInput.addEventListener('change', applyRescheduleVisibility);
             serviceDateInput.addEventListener('input', applyRescheduleVisibility);
             applyRescheduleVisibility();
+
+            // ---------------- LEADER SELECTION (Pending only) ----------------
+            // Moves the "Leader" badge next to whichever assigned technician is
+            // currently selected — mirrors the Create page's behavior, just
+            // without the ability to add/remove technicians here.
+            document.querySelectorAll('.leaderRadio').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    document.querySelectorAll('.leaderTag').forEach(function (tag) {
+                        tag.classList.add('d-none');
+                    });
+                    var nameSpan = document.getElementById('empName-' + radio.value);
+                    if (nameSpan) {
+                        var tag = nameSpan.querySelector('.leaderTag');
+                        if (tag) tag.classList.remove('d-none');
+                    }
+                });
+            });
         })();
     </script>
 }

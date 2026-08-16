@@ -21,7 +21,8 @@ namespace TM_PE.Model
 
         public DateTime NewServiceDate { get; set; }
 
-        // Manager-entered reason for the reschedule; shown to the field technician.
+        // Reason for the reschedule. Managers are not required to provide one,
+        // but the database column is non-nullable, so we preserve an empty value.
         [Required]
         [StringLength(500)]
         public string Reason { get; set; } = string.Empty;

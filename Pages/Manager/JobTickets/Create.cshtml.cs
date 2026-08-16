@@ -29,6 +29,14 @@ namespace TM_PE.Pages.Manager.JobTickets
         // Used to populate the "Add Assignees" dropdown — Field Technicians only
         public List<Employee> FieldTechnicianList { get; set; } = new();
 
+        // Full records (id + name) for the technicians already selected, in the
+        // order they were added. Used to re-render the "Selected" list and hide
+        // them from the dropdown when the page is redisplayed after a validation
+        // error — otherwise the assignees the manager already picked would
+        // silently disappear (the list only ever lived in the browser's JS state)
+        // and the manager would have to re-add everyone from scratch.
+        public List<Employee> SelectedEmployees { get; set; } = new();
+
         // Read-only preview of the ticket number that will be generated on save
         public string NextTicketNumber { get; set; } = string.Empty;
 
@@ -71,6 +79,14 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             if (JobTicket.ServiceDate.Date < DateTime.Now.Date)
                 ModelState.AddModelError("JobTicket.ServiceDate", "Date cannot be set to a previous day.");
+
+            // Not required at the database level (older tickets predate this
+            // field), but the manager must set one for every new ticket — it's
+            // what drives the automatic Overdue status.
+            if (JobTicket.DateOfCompletion == null)
+                ModelState.AddModelError("JobTicket.DateOfCompletion", "Please set a date of completion.");
+            else if (JobTicket.DateOfCompletion.Value.Date < JobTicket.ServiceDate.Date)
+                ModelState.AddModelError("JobTicket.DateOfCompletion", "Date of completion cannot be before the service date.");
 
             if (JobTicket.JobType == JobTypes.Installation)
             {
@@ -141,6 +157,16 @@ namespace TM_PE.Pages.Manager.JobTickets
                     .OrderBy(e => e.FullName)
                     .ToListAsync();
                 NextTicketNumber = await GenerateTicketNumberAsync();
+
+                // Re-hydrate the previously-selected assignees (in the order they
+                // were submitted) so the Create page can restore them instead of
+                // showing an empty "Add Assignees" list.
+                SelectedEmployees = SelectedEmployeeIds
+                    .Select(id => FieldTechnicianList.FirstOrDefault(e => e.EmployeeId == id))
+                    .Where(e => e != null)
+                    .Select(e => e!)
+                    .ToList();
+
                 return Page();
             }
 

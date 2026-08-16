@@ -46,6 +46,10 @@ namespace TM_PE.Pages.Manager.JobTickets
                 return NotFound();
             }
 
+            // Overdue is purely time-based, so re-check it every time the page is
+            // opened rather than relying on whatever was last saved.
+            await JobTicketOverdueChecker.RefreshAsync(_context, new[] { ticket });
+
             ticket.Submissions = ticket.Submissions
                 .Where(s => s.RescheduleHistoryID == null)
                 .OrderByDescending(s => s.DateSubmitted)
@@ -58,41 +62,6 @@ namespace TM_PE.Pages.Manager.JobTickets
             JobTicket = ticket;
 
             return Page();
-        }
-
-        // While a ticket is still Pending, the manager may re-designate which
-        // assigned technician leads the job (the team itself stays fixed).
-        public async Task<IActionResult> OnPostChangeLeaderAsync(int id, int leaderEmployeeId)
-        {
-            var ticket = await _context.JobTickets
-                .Include(t => t.Assignments)
-                .FirstOrDefaultAsync(t => t.JobTicketID == id);
-
-            if (ticket == null)
-            {
-                return NotFound();
-            }
-
-            if (ticket.Status != JobTicketStatuses.Pending)
-            {
-                ErrorMessage = "The leader can only be changed while the job order is still Pending.";
-                return RedirectToPage(new { id });
-            }
-
-            if (!ticket.Assignments.Any(a => a.EmployeeID == leaderEmployeeId))
-            {
-                ErrorMessage = "Please select one of the technicians already assigned to this job order.";
-                return RedirectToPage(new { id });
-            }
-
-            foreach (var a in ticket.Assignments)
-            {
-                a.IsLeader = a.EmployeeID == leaderEmployeeId;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return RedirectToPage(new { id });
         }
 
         // Manager closes out a job ticket once it has been marked Completed by the

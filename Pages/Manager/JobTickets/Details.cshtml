@@ -11,6 +11,7 @@
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
         "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
+        "Overdue" => "bg-danger-subtle text-danger-emphasis",
         _ => "bg-secondary-subtle text-secondary"
     };
 }
@@ -46,6 +47,10 @@
             <div class="col-sm-3">
                 <div class="text-muted small">Status</div>
                 <span class="badge rounded-pill @badgeClass px-3 py-2">@Model.JobTicket.Status</span>
+            </div>
+            <div class="col-sm-3">
+                <div class="text-muted small">Date of Completion</div>
+                <div>@(Model.JobTicket.DateOfCompletion?.ToString("M/d/yyyy") ?? "—")</div>
             </div>
         </div>
 
@@ -98,41 +103,17 @@
             <div class="text-muted small mb-2">Assigned Field Technicians</div>
             @if (Model.JobTicket.Assignments != null && Model.JobTicket.Assignments.Any())
             {
-                @if (Model.JobTicket.Status == "Pending")
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
+                    {
+                        <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
+                            @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
+                        </span>
+                    }
+                </div>
+                @if (Model.JobTicket.IsPendingOrOverdue)
                 {
-                    <form method="post" asp-page-handler="ChangeLeader" asp-route-id="@Model.JobTicket.JobTicketID" class="d-flex flex-wrap align-items-end gap-2">
-                        <div>
-                            <label class="form-label small text-muted mb-1">Assigned Leader</label>
-                            <select name="leaderEmployeeId" class="form-select form-select-sm">
-                                @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
-                                {
-                                    <option value="@a.EmployeeID" selected="@a.IsLeader">@a.Employee!.FullName</option>
-                                }
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-person-check"></i> Update Leader
-                        </button>
-                    </form>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                        @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
-                        {
-                            <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
-                                @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
-                            </span>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var a in Model.JobTicket.Assignments.Where(a => a.Employee != null))
-                        {
-                            <span class="badge rounded-pill @(a.IsLeader ? "bg-primary" : "bg-light text-dark border") px-3 py-2">
-                                @a.Employee!.FullName @(a.IsLeader ? "(Leader)" : "")
-                            </span>
-                        }
-                    </div>
+                    <p class="text-muted small mt-2 mb-0">The leader can be changed from the Edit page while this job order is Pending.</p>
                 }
             }
             else
@@ -166,8 +147,11 @@
                         @h.OldServiceDate.ToString("M/d/yyyy") <i class="bi bi-arrow-right mx-1"></i> @h.NewServiceDate.ToString("M/d/yyyy")
                         <span class="text-muted small ms-2">(@h.DateChanged.ToString("M/d/yyyy h:mm tt"))</span>
                     </div>
-                    <div class="text-muted small mt-1">Reason</div>
-                    <div>@h.Reason</div>
+                    @if (!string.IsNullOrWhiteSpace(h.Reason))
+                    {
+                        <div class="text-muted small mt-1">Reason</div>
+                        <div>@h.Reason</div>
+                    }
                 </div>
             }
         </div>

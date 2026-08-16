@@ -27,9 +27,12 @@ namespace TM_PE.Pages.FieldTechnician
         // themselves (in addition to being set directly by a manager). Once set
         // this way, the ticket locks from further field-technician edits until
         // the manager approves/acts on it (see JobTicket.IsLockedFromFieldTechnicianEditing).
-        public static readonly string[] StatusOptions = { 
+        // "Rescheduled" is intentionally NOT offered here — it's never chosen
+        // directly by the leader, only ever set by the manager's own reschedule
+        // action (and even then, the ticket goes back to Pending — see
+        // Manager/JobTickets/Edit.cshtml.cs).
+        public static readonly string[] StatusOptions = {
             JobTicketStatuses.Pending,
-            JobTicketStatuses.Rescheduled,
             JobTicketStatuses.InProgress,
             JobTicketStatuses.Completed,
             JobTicketStatuses.Cancelled,
@@ -98,6 +101,10 @@ namespace TM_PE.Pages.FieldTechnician
                 ErrorMessage = "You are not assigned to that job order.";
                 return RedirectToPage("./Index");
             }
+
+            // Overdue is purely time-based, so re-check it every time the page is
+            // opened rather than relying on whatever was last saved.
+            await JobTicketOverdueChecker.RefreshAsync(_context, new[] { ticket });
 
             IsLeader = myAssignment.IsLeader;
 
@@ -182,6 +189,12 @@ namespace TM_PE.Pages.FieldTechnician
                     _ => "This job order can no longer be updated."
                 };
 
+                return RedirectToPage(new { id = jobTicketId });
+            }
+
+            if (!ticket.IsAccessibleToFieldTechnician)
+            {
+                ErrorMessage = $"This job order isn't accessible yet — it's scheduled for {ticket.ServiceDate:M/d/yyyy}.";
                 return RedirectToPage(new { id = jobTicketId });
             }
 
@@ -286,6 +299,12 @@ namespace TM_PE.Pages.FieldTechnician
                 return RedirectToPage(new { id = jobTicketId });
             }
 
+            if (!ticket.IsAccessibleToFieldTechnician)
+            {
+                ErrorMessage = $"This job order isn't accessible yet — it's scheduled for {ticket.ServiceDate:M/d/yyyy}.";
+                return RedirectToPage(new { id = jobTicketId });
+            }
+
             var submission = await _context.JobTicketSubmissions
                 .FirstOrDefaultAsync(s => s.JobTicketSubmissionID == submissionId
                     && s.JobTicketID == jobTicketId
@@ -381,6 +400,11 @@ namespace TM_PE.Pages.FieldTechnician
                 return BackWithError("This job order has a pending reschedule request awaiting manager approval and can't be updated until it's resolved.");
             }
 
+            if (!ticket.IsAccessibleToFieldTechnician)
+            {
+                return BackWithError($"This job order isn't accessible yet — it's scheduled for {ticket.ServiceDate:M/d/yyyy}.");
+            }
+
             // Validate status
             if (!StatusOptions.Contains(status))
             {
@@ -449,22 +473,22 @@ namespace TM_PE.Pages.FieldTechnician
             {
                 return BackWithError("You must upload at least one photo or file for proof before requesting a reschedule for this job order.");
             }
-        // ============================================================
-        // SAVE STATUS
-        // ============================================================
-        var history = new JobTicketSubmissionHistory
-        {
-            JobTicketID = ticket.JobTicketID,
-            Status = status,
-            Remarks = string.IsNullOrWhiteSpace(remarks)
-                ? null
-                : remarks.Trim(),
-            DateChanged = DateTime.Now
-        };
+            // ============================================================
+            // SAVE STATUS
+            // ============================================================
+            var history = new JobTicketSubmissionHistory
+            {
+                JobTicketID = ticket.JobTicketID,
+                Status = status,
+                Remarks = string.IsNullOrWhiteSpace(remarks)
+                    ? null
+                    : remarks.Trim(),
+                DateChanged = DateTime.Now
+            };
 
-        var currentSubmissions = ticket.Submissions
-            .Where(s => s.RescheduleHistoryID == null && s.SubmissionHistoryID == null)
-            .ToList();
+            var currentSubmissions = ticket.Submissions
+                .Where(s => s.RescheduleHistoryID == null && s.SubmissionHistoryID == null)
+                .ToList();
 
             foreach (var sub in currentSubmissions)
             {
@@ -472,7 +496,7 @@ namespace TM_PE.Pages.FieldTechnician
                 sub.SubmissionHistoryID = null;
             }
 
-    _context.JobTicketSubmissionHistories.Add(history);
+            _context.JobTicketSubmissionHistories.Add(history);
             await _context.SaveChangesAsync();
 
             foreach (var sub in currentSubmissions)
@@ -480,52 +504,52 @@ namespace TM_PE.Pages.FieldTechnician
                 sub.SubmissionHistoryID = history.JobTicketSubmissionHistoryID;
             }
 
-if (isNewReschedule)
-{
-    var rescheduleHistory = new JobTicketRescheduleHistory
-    {
-        JobTicketID = ticket.JobTicketID,
-        OldServiceDate = ticket.ServiceDate,
-        NewServiceDate = ticket.ServiceDate,
-        Reason = remarks!.Trim(),
-        PreviousStatus = ticket.Status,
-        PreviousRemarks = ticket.Remarks,
-        DateChanged = DateTime.Now
-    };
-
-    var currentSubmissionsBeforeReschedule = ticket.Submissions
-        .Where(s => s.RescheduleHistoryID == null && s.SubmissionHistoryID == null)
-        .ToList();
-
-    foreach (var sub in currentSubmissionsBeforeReschedule)
-    {
-        rescheduleHistory.ArchivedSubmissions.Add(sub);
-        sub.RescheduleHistoryID = null;
-    }
-
-    _context.JobTicketRescheduleHistories.Add(rescheduleHistory);
-    await _context.SaveChangesAsync();
-
-            foreach (var sub in currentSubmissionsBeforeReschedule)
+            if (isNewReschedule)
             {
-                sub.RescheduleHistoryID = rescheduleHistory.JobTicketRescheduleHistoryID;
-            }
+                var rescheduleHistory = new JobTicketRescheduleHistory
+                {
+                    JobTicketID = ticket.JobTicketID,
+                    OldServiceDate = ticket.ServiceDate,
+                    NewServiceDate = ticket.ServiceDate,
+                    Reason = remarks!.Trim(),
+                    PreviousStatus = ticket.Status,
+                    PreviousRemarks = ticket.Remarks,
+                    DateChanged = DateTime.Now
+                };
+
+                var currentSubmissionsBeforeReschedule = ticket.Submissions
+                    .Where(s => s.RescheduleHistoryID == null && s.SubmissionHistoryID == null)
+                    .ToList();
+
+                foreach (var sub in currentSubmissionsBeforeReschedule)
+                {
+                    rescheduleHistory.ArchivedSubmissions.Add(sub);
+                    sub.RescheduleHistoryID = null;
+                }
+
+                _context.JobTicketRescheduleHistories.Add(rescheduleHistory);
+                await _context.SaveChangesAsync();
+
+                foreach (var sub in currentSubmissionsBeforeReschedule)
+                {
+                    sub.RescheduleHistoryID = rescheduleHistory.JobTicketRescheduleHistoryID;
+                }
 
                 ticket.Status = JobTicketStatuses.RescheduleRequest;
                 ticket.Remarks = null;
             }
             else
             {
-                 ticket.Status = status;
+                ticket.Status = status;
 
-                 ticket.Remarks = string.IsNullOrWhiteSpace(remarks)
-                  ? null
-                : remarks.Trim();
+                ticket.Remarks = string.IsNullOrWhiteSpace(remarks)
+                 ? null
+               : remarks.Trim();
             }
 
-                await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
-                return RedirectToPage("./Index");
+            return RedirectToPage("./Index");
         }
 
         public async Task<IActionResult> OnGetDownloadAsync(int submissionId)
@@ -533,17 +557,17 @@ if (isNewReschedule)
             var submission = await _context.JobTicketSubmissions.FindAsync(submissionId);
             if (submission == null || string.IsNullOrEmpty(submission.FilePath))
             {
-                  return NotFound();
+                return NotFound();
             }
 
-             var fullPath = Path.Combine(_env.WebRootPath, submission.FilePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-             if (!System.IO.File.Exists(fullPath))
-             {
-                  return NotFound();
-             }
+            var fullPath = Path.Combine(_env.WebRootPath, submission.FilePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            if (!System.IO.File.Exists(fullPath))
+            {
+                return NotFound();
+            }
 
-                  var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
-                  return File(bytes, "application/octet-stream", submission.FileName);
+            var bytes = await System.IO.File.ReadAllBytesAsync(fullPath);
+            return File(bytes, "application/octet-stream", submission.FileName);
         }
         public async Task<IActionResult> OnPostCancelEditAsync(int jobTicketId)
         {

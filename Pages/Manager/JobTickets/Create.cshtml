@@ -53,7 +53,7 @@
                 </label>
 
                 <select asp-for="JobTicket.JobType" id="jobTypeSelect" class="form-select" required>
-                    <option value="">Select a job type</option>
+                    
                     @foreach (var type in Model.JobTypeOptions)
                     {
                         <option value="@type">@type</option>
@@ -147,12 +147,33 @@
 
                     <input asp-for="JobTicket.ServiceDate"
                            type="date"
+                           id="serviceDateInput"
                            min="@DateTime.Now.ToString("yyyy-MM-dd")"
                            value="@Model.JobTicket.ServiceDate.ToString("yyyy-MM-dd")"
                            class="form-control"
                            required />
 
                     <span asp-validation-for="JobTicket.ServiceDate" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-6 mt-3">
+                    <label class="form-label fw-semibold">
+                        Date of Completion <span class="text-danger">*</span>
+                    </label>
+
+                    <input asp-for="JobTicket.DateOfCompletion"
+                           type="date"
+                           id="dateOfCompletionInput"
+                           min="@DateTime.Now.ToString("yyyy-MM-dd")"
+                           value="@(Model.JobTicket.DateOfCompletion?.ToString("yyyy-MM-dd"))"
+                           class="form-control"
+                           required />
+
+                    <div class="form-text">
+                        The deadline for this job to be finished. If this date passes and the job still isn't done, it's automatically marked Overdue.
+                    </div>
+
+                    <span asp-validation-for="JobTicket.DateOfCompletion" class="text-danger"></span>
                 </div>
             </div>
 
@@ -255,6 +276,7 @@
             const descriptionGroup = document.getElementById('descriptionGroup');
             const descriptionInput = document.getElementById('descriptionInput');
             const serviceDateLabel = document.getElementById('serviceDateLabel');
+            const serviceDateInput = document.getElementById('serviceDateInput');
 
             // Client Info (Full Name / Primary / Secondary) — only collected for
             // non-Maintenance jobs. Switching to Maintenance clears whatever was typed.
@@ -315,6 +337,19 @@
             jobTypeSelect.addEventListener('change', applyJobType);
             applyJobType();
 
+            // ---------------- DATE OF COMPLETION ----------------
+            // The completion deadline can't be set before the service date itself.
+            const dateOfCompletionInput = document.getElementById('dateOfCompletionInput');
+            function applyDateOfCompletionMin() {
+                if (!serviceDateInput.value) return;
+                dateOfCompletionInput.min = serviceDateInput.value;
+                if (dateOfCompletionInput.value && dateOfCompletionInput.value < serviceDateInput.value) {
+                    dateOfCompletionInput.value = serviceDateInput.value;
+                }
+            }
+            serviceDateInput.addEventListener('change', applyDateOfCompletionMin);
+            applyDateOfCompletionMin();
+
             // ---------------- ASSIGNEES + LEADER ----------------
             const employeeSelect = document.getElementById('employeeSelect');
             const addEmployeeBtn = document.getElementById('addEmployeeBtn');
@@ -325,12 +360,21 @@
             const addedEmployees = new Map();
             let leaderId = null;
 
-            // Once a technician is selected, their option disappears from the
-            // dropdown; removing them from the list restores it in its original
-            // (alphabetical) position.
-            const originalOptions = Array.from(employeeSelect.options).filter(o => o.value !== '');
-            const optionMap = new Map();
-            originalOptions.forEach(o => optionMap.set(o.value, o));
+            // Assignees the manager had already added before a validation error
+            // reloaded the page (e.g. a bad phone number, missing description,
+            // etc). Without this, the list below would start empty again and the
+            // manager would have to re-pick every technician from scratch.
+            const preSelectedEmployees = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                            Model.SelectedEmployees.Select(e => new { id = e.EmployeeId.ToString(), name = e.FullName })));
+        const preSelectedLeaderId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                        Model.LeaderEmployeeId > 0 ? Model.LeaderEmployeeId.ToString() : null));
+
+        // Once a technician is selected, their option disappears from the
+        // dropdown; removing them from the list restores it in its original
+        // (alphabetical) position.
+        const originalOptions = Array.from(employeeSelect.options).filter(o => o.value !== '');
+        const optionMap = new Map();
+        originalOptions.forEach(o => optionMap.set(o.value, o));
 
             function hideOptionFromDropdown(id) {
                 const opt = optionMap.get(id);
@@ -410,7 +454,7 @@
                     const nameSpan = document.getElementById(`empName-${id}`);
                     if (!nameSpan) return;
                     nameSpan.innerHTML = (id === leaderId)
-                        ? `${name} <span class="badge bg-primary ms-1">Leader</span>`
+                        ? `${name} <span class="badge bg-primary ms-1"></span>`
                         : name;
                 });
             }
@@ -422,6 +466,28 @@
             leaderHidden.name = 'LeaderEmployeeId';
             leaderHidden.value = '';
             document.getElementById('ticketForm').appendChild(leaderHidden);
+
+            // Restore any assignees (and the chosen leader) that survived a
+            // validation error on the server, so they don't have to be re-added.
+            preSelectedEmployees.forEach(function (emp) {
+                if (addedEmployees.has(emp.id)) return;
+                addedEmployees.set(emp.id, emp.name);
+                noEmployeesMsg.style.display = 'none';
+                renderEmployeeRow(emp.id, emp.name);
+                hideOptionFromDropdown(emp.id);
+            });
+
+            if (addedEmployees.size > 0) {
+                if (preSelectedLeaderId && addedEmployees.has(preSelectedLeaderId)) {
+                    leaderId = preSelectedLeaderId;
+                } else {
+                    leaderId = [...addedEmployees.keys()][0];
+                }
+                leaderHidden.value = leaderId;
+                const leaderRadio = document.getElementById(`leaderRadio-${leaderId}`);
+                if (leaderRadio) leaderRadio.checked = true;
+                refreshLeaderTags();
+            }
 
             addEmployeeBtn.addEventListener('click', function () {
                 const id = employeeSelect.value;

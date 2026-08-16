@@ -18,12 +18,6 @@ namespace TM_PE.Pages.Manager.JobTickets
         [BindProperty]
         public Model.JobTicket JobTicket { get; set; } = default!;
 
-        // Required only when the manager changes the service date; captured as a
-        // separate field (rather than reusing JobTicket.Remarks, which belongs to
-        // the field technician leader) and logged to JobTicketRescheduleHistory.
-        [BindProperty]
-        public string? RescheduleReason { get; set; }
-
         // The technician the manager wants to designate as team leader. Only
         // honored while the ticket is still Pending — the assigned team itself
         // can't be changed from this page, only who among them leads.
@@ -55,6 +49,10 @@ namespace TM_PE.Pages.Manager.JobTickets
             {
                 return NotFound();
             }
+
+            // Overdue is purely time-based, so re-check it every time the page is
+            // opened rather than relying on whatever was last saved.
+            await JobTicketOverdueChecker.RefreshAsync(_context, new[] { jobTicket });
 
             // Completed (and Closed) tickets are locked — no further edits allowed.
             // NOTE: a pending Reschedule Request does NOT lock the manager out —
@@ -105,16 +103,16 @@ namespace TM_PE.Pages.Manager.JobTickets
             // Captured before any mutations below — used both to gate the leader
             // change (only allowed while Pending) and to know whether this save is
             // resolving a pending Reschedule Request from the field technician.
-            bool wasPending = ticket.Status == JobTicketStatuses.Pending;
+            bool wasPending = ticket.IsPendingOrOverdue;
             bool wasRescheduleRequest = ticket.Status == JobTicketStatuses.RescheduleRequest;
 
             OriginalServiceDate = ticket.ServiceDate;
 
-            // Changing the service date reschedules the job — require a reason so
-            // the field technician knows why the date moved. This also doubles as
+            // Changing the service date reschedules the job. This also doubles as
             // how the manager resolves a pending Reschedule Request: whether the
             // date is being changed for the first time or the manager is acting on
             // a request the field technician leader submitted, it's the same action.
+            // No reason is required from the manager for this.
             bool dateChanged = JobTicket.ServiceDate.Date != ticket.ServiceDate.Date;
 
             // A pending Reschedule Request can only be resolved by the manager
@@ -125,6 +123,11 @@ namespace TM_PE.Pages.Manager.JobTickets
                     "JobTicket.ServiceDate",
                     "This job order has a pending reschedule request. Please set a new service date to resolve it.");
             }
+
+            if (JobTicket.DateOfCompletion == null)
+                ModelState.AddModelError("JobTicket.DateOfCompletion", "Please set a date of completion.");
+            else if (JobTicket.DateOfCompletion.Value.Date < JobTicket.ServiceDate.Date)
+                ModelState.AddModelError("JobTicket.DateOfCompletion", "Date of completion cannot be before the service date.");
 
             // The leader can only be changed while the ticket is Pending, and only
             // among the technicians already assigned — this page can't add/remove
@@ -224,7 +227,11 @@ namespace TM_PE.Pages.Manager.JobTickets
                     JobTicketID = ticket.JobTicketID,
                     OldServiceDate = ticket.ServiceDate,
                     NewServiceDate = JobTicket.ServiceDate,
-                    Reason = null,
+                    // Managers aren't required to give a reason when they reschedule
+                    // (unlike a field technician's own Reschedule Request). The
+                    // column itself is NOT NULL, so this stays an empty string
+                    // rather than null.
+                    Reason = string.Empty,
                     PreviousStatus = ticket.Status,
                     PreviousRemarks = ticket.Remarks,
                     DateChanged = DateTime.Now
@@ -233,7 +240,12 @@ namespace TM_PE.Pages.Manager.JobTickets
                 var submissionHistory = new Model.JobTicketSubmissionHistory
                 {
                     JobTicketID = ticket.JobTicketID,
-                    Status = "Rescheduled by Manager",
+                    // "Rescheduled by Manager" (22 chars) doesn't fit the Status
+                    // column's 20-char limit and gets truncated by SQL Server,
+                    // which throws instead of silently cutting it off. Use the
+                    // same "Rescheduled" value the ticket's own Status is set to
+                    // below, which is both accurate and within the limit.
+                    Status = JobTicketStatuses.Rescheduled,
                     Remarks = null,
                     DateChanged = DateTime.Now
                 };
@@ -255,8 +267,11 @@ namespace TM_PE.Pages.Manager.JobTickets
                 }
 
                 // Pending gives the leader a clean slate on the new date, whether
-                // this was a direct reschedule or resolving their own request.
-                ticket.Status = JobTicketStatuses.Rescheduled;
+                // this was a direct reschedule or resolving their own request. The
+                // Reschedule/Submission history entries above already preserve the
+                // record of what happened — the ticket itself just goes back to
+                // needing to be picked up again, same as any other Pending job.
+                ticket.Status = JobTicketStatuses.Pending;
                 ticket.Remarks = null;
             }
 
@@ -290,6 +305,7 @@ namespace TM_PE.Pages.Manager.JobTickets
             ticket.FiberPlan = JobTicket.FiberPlan;
             ticket.Description = JobTicket.Description;
             ticket.ServiceDate = JobTicket.ServiceDate;
+            ticket.DateOfCompletion = JobTicket.DateOfCompletion;
             ticket.LocationAddress = JobTicket.LocationAddress;
             ticket.NearestLandmark = JobTicket.NearestLandmark;
 

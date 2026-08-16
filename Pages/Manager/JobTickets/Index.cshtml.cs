@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using TM_PE.Data;
+using TM_PE.Model;
 
 namespace TM_PE.Pages.Manager.JobTickets
 {
@@ -27,8 +28,20 @@ namespace TM_PE.Pages.Manager.JobTickets
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.Employee)
                 .Include(t => t.Submissions)
+                .Include(t => t.RescheduleHistory)
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();
+
+            // Overdue is purely time-based, so re-check it every time the list is
+            // loaded rather than relying on whatever was last saved.
+            await JobTicketOverdueChecker.RefreshAsync(_context, JobTicket);
+
+            foreach (var ticket in JobTicket)
+            {
+                ticket.RescheduleHistory = ticket.RescheduleHistory
+                    .OrderByDescending(h => h.DateChanged)
+                    .ToList();
+            }
         }
     }
 }

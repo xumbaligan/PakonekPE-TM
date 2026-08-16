@@ -23,7 +23,10 @@ namespace TM_PE.Model
     // Job ticket lifecycle. "Closed" is a manager-only, terminal state — once a
     // ticket is Closed it is locked from further edits. "Reschedule Request" can
     // be set either by the manager directly (immediate reschedule) or requested
-    // by the field technician leader (awaiting manager approval).
+    // by the field technician leader (awaiting manager approval). "Overdue" is
+    // never chosen directly by anyone — it's computed automatically (see
+    // JobTicketOverdueChecker) whenever a ticket's Date of Completion has
+    // passed and the job hasn't been finished yet.
     public static class JobTicketStatuses
     {
         public const string Pending = "Pending";
@@ -33,8 +36,55 @@ namespace TM_PE.Model
         public const string Closed = "Closed";
         public const string RescheduleRequest = "Reschedule Request";
         public const string Rescheduled = "Rescheduled";
+        public const string Overdue = "Overdue";
 
         public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, Closed, RescheduleRequest };
+    }
+
+    // A ticket becomes Overdue purely because time has passed, not because
+    // anyone edited it — so this is re-checked on every page load (wherever a
+    // ticket is displayed) rather than stored as a one-time decision. Only
+    // Pending and In Progress tickets are eligible: those are the two states
+    // representing work that hasn't been finished or otherwise resolved yet.
+    public static class JobTicketOverdueChecker
+    {
+        public static bool IsOverdue(JobTicket ticket) =>
+            (ticket.Status == JobTicketStatuses.Pending || ticket.Status == JobTicketStatuses.InProgress)
+            && ticket.DateOfCompletion.HasValue
+            && ticket.DateOfCompletion.Value.Date < DateTime.Now.Date;
+
+        // Recomputes Overdue for every ticket in the list and persists any
+        // changes. Also reverts a ticket that's marked Overdue back to Pending
+        // if its Date of Completion was pushed out again (e.g. via Edit) so it
+        // no longer qualifies.
+        public static async Task RefreshAsync(TM_PE.Data.AppDbContext context, IEnumerable<JobTicket> tickets)
+        {
+            var today = DateTime.Now.Date;
+            bool changed = false;
+
+            foreach (var ticket in tickets)
+            {
+                if (IsOverdue(ticket))
+                {
+                    if (ticket.Status != JobTicketStatuses.Overdue)
+                    {
+                        ticket.Status = JobTicketStatuses.Overdue;
+                        changed = true;
+                    }
+                }
+                else if (ticket.Status == JobTicketStatuses.Overdue
+                    && (!ticket.DateOfCompletion.HasValue || ticket.DateOfCompletion.Value.Date >= today))
+                {
+                    ticket.Status = JobTicketStatuses.Pending;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await context.SaveChangesAsync();
+            }
+        }
     }
 
     [Table("tbl_jobticket")]
@@ -78,6 +128,13 @@ namespace TM_PE.Model
         [Required(ErrorMessage = "Date is required.")]
         public DateTime ServiceDate { get; set; } = DateTime.Now;
 
+        // The deadline the manager sets for this job to be finished. Not
+        // required at the database level (existing tickets predate this field),
+        // but the Create page requires it — see CreateModel.OnPostAsync. Drives
+        // the automatic Overdue status (see JobTicketOverdueChecker) once it
+        // passes and the job still isn't done.
+        public DateTime? DateOfCompletion { get; set; }
+
         // Free-text address entered directly by the manager.
         [Required(ErrorMessage = "Location address is required.")]
         [StringLength(300)]
@@ -115,6 +172,20 @@ namespace TM_PE.Model
         [NotMapped]
         public bool IsLockedFromFieldTechnicianEditing =>
             IsLockedFromEditing || Status == JobTicketStatuses.RescheduleRequest;
+
+        // Overdue is just an expired Pending/In Progress job (see
+        // JobTicketOverdueChecker) — for manager actions that are gated on
+        // "still Pending" (e.g. re-designating the leader on the Edit page),
+        // an Overdue ticket that was Pending should be treated the same way.
+        [NotMapped]
+        public bool IsPendingOrOverdue =>
+            Status == JobTicketStatuses.Pending || Status == JobTicketStatuses.Overdue;
+
+        // The field technician leader can only open/act on a job ticket once its
+        // scheduled date actually arrives — no working on (or marking complete)
+        // a job that's still scheduled for a future date.
+        [NotMapped]
+        public bool IsAccessibleToFieldTechnician => DateTime.Now.Date >= ServiceDate.Date;
 
         // Label shown above the ServiceDate field/value, based on JobType.
         [NotMapped]

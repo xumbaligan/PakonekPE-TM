@@ -45,6 +45,10 @@ namespace TM_PE.Pages.FieldTechnician
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();
 
+            // Overdue is purely time-based, so re-check it every time the list is
+            // loaded rather than relying on whatever was last saved.
+            await JobTicketOverdueChecker.RefreshAsync(_context, AssignedJobOrders);
+
             LeaderOn = AssignedJobOrders
                 .Where(t => t.Assignments.Any(a => a.EmployeeID == employeeId.Value && a.IsLeader))
                 .Select(t => t.JobTicketID)

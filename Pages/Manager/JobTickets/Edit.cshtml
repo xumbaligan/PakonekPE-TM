@@ -93,6 +93,17 @@
                     <input type="hidden" id="originalServiceDate" value="@Model.OriginalServiceDate.ToString("yyyy-MM-dd")" />
                     <span asp-validation-for="JobTicket.ServiceDate" class="text-danger"></span>
                 </div>
+
+                <div class="col-md-6 mt-3">
+                    <label class="form-label fw-semibold">Date of Completion <span class="text-danger">*</span></label>
+                    <input asp-for="JobTicket.DateOfCompletion" type="date" id="dateOfCompletionInput"
+                           value="@(Model.JobTicket.DateOfCompletion?.ToString("yyyy-MM-dd"))"
+                           class="form-control" />
+                    <div class="form-text">
+                        The deadline for this job to be finished. If this date passes and the job still isn't done, it's automatically marked Overdue.
+                    </div>
+                    <span asp-validation-for="JobTicket.DateOfCompletion" class="text-danger"></span>
+                </div>
             </div>
 
             @if (Model.JobTicket.Status == "Reschedule Request")
@@ -130,7 +141,7 @@
                     <h5 class="fw-semibold mb-3">👷 Assigned Field Technicians</h5>
                     @if (Model.JobTicket.Assignments != null && Model.JobTicket.Assignments.Any())
                     {
-                        @if (Model.JobTicket.Status == "Pending")
+                        @if (Model.JobTicket.IsPendingOrOverdue)
                         {
                             <p class="text-muted small mb-3">
                                 Choose who leads this job order. The assigned team itself can't be
@@ -210,8 +221,8 @@
         (function () {
             // ---------------- ADDRESS AUTOCOMPLETE ----------------
             // Biased toward Cebu/Philippines; users can still search anywhere.
-            initAddressAutocomplete(document.getElementById('locationAddressInput'), { lat: 10.3157, lon: 123.8854 });
-            initAddressAutocomplete(document.getElementById('nearestLandmarkInput'), { lat: 10.3157, lon: 123.8854 });
+            // initAddressAutocomplete(document.getElementById('locationAddressInput'), { lat: 10.3157, lon: 123.8854 });
+            // initAddressAutocomplete(document.getElementById('nearestLandmarkInput'), { lat: 10.3157, lon: 123.8854 });
 
             // ---------------- JOB TYPE TOGGLE ----------------
             const jobTypeSelect = document.getElementById('jobTypeSelect');
@@ -220,6 +231,7 @@
             const descriptionGroup = document.getElementById('descriptionGroup');
             const descriptionInput = document.getElementById('descriptionInput');
             const serviceDateLabel = document.getElementById('serviceDateLabel');
+            const serviceDateInput = document.getElementById('serviceDateInput');
 
             // Client Info (Full Name / Primary / Secondary) — only collected for
             // non-Maintenance jobs. Switching to Maintenance clears whatever was typed;
@@ -244,9 +256,15 @@
                 }
             }
 
-            function applyJobType() {
+              function applyJobType() {
                 const type = jobTypeSelect.value;
-                if (type === 'Repair') {
+                if (type === 'Installation') {
+                    fiberPlanGroup.classList.remove('d-none');
+                    descriptionGroup.classList.add('d-none');
+                    fiberPlanSelect.setAttribute('required', 'required');
+                    descriptionInput.removeAttribute('required');
+                    serviceDateLabel.innerHTML = 'Date of Installation <span class="text-danger">*</span>';
+                } else if (type === 'Repair') {
                     fiberPlanGroup.classList.add('d-none');
                     descriptionGroup.classList.remove('d-none');
                     fiberPlanSelect.removeAttribute('required');
@@ -267,9 +285,7 @@
                 } else {
                     fiberPlanGroup.classList.remove('d-none');
                     descriptionGroup.classList.add('d-none');
-                    fiberPlanSelect.setAttribute('required', 'required');
-                    descriptionInput.removeAttribute('required');
-                    serviceDateLabel.innerHTML = 'Date of Installation <span class="text-danger">*</span>';
+                    serviceDateLabel.innerHTML = 'Date <span class="text-danger">*</span>';
                 }
                 applyClientInfoVisibility(type);
             }
@@ -277,10 +293,17 @@
             jobTypeSelect.addEventListener('change', applyJobType);
             applyJobType();
 
-
-            serviceDateInput.addEventListener('change', applyRescheduleVisibility);
-            serviceDateInput.addEventListener('input', applyRescheduleVisibility);
-            applyRescheduleVisibility();
+            // ---------------- DATE OF COMPLETION ----------------
+            const dateOfCompletionInput = document.getElementById('dateOfCompletionInput');
+            function applyDateOfCompletionMin() {
+                if (!serviceDateInput.value) return;
+                dateOfCompletionInput.min = serviceDateInput.value;
+                if (dateOfCompletionInput.value && dateOfCompletionInput.value < serviceDateInput.value) {
+                    dateOfCompletionInput.value = serviceDateInput.value;
+                }
+            }
+            serviceDateInput.addEventListener('change', applyDateOfCompletionMin);
+            applyDateOfCompletionMin();
 
             // ---------------- LEADER SELECTION (Pending only) ----------------
             // Moves the "Leader" badge next to whichever assigned technician is

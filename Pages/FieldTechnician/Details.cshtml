@@ -10,6 +10,7 @@
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
         "Reschedule Request" => "bg-warning-subtle text-warning-emphasis",
+        "Overdue" => "bg-danger-subtle text-danger-emphasis",
         _ => "bg-secondary-subtle text-secondary"
     };
 }
@@ -52,6 +53,10 @@
             <div class="col-sm-3">
                 <div class="text-muted small">@Model.JobTicket.ServiceDateLabel</div>
                 <div>@Model.JobTicket.ServiceDate.ToString("M/d/yyyy")</div>
+            </div>
+            <div class="col-sm-3">
+                <div class="text-muted small">Date of Completion</div>
+                <div>@(Model.JobTicket.DateOfCompletion?.ToString("M/d/yyyy") ?? "—")</div>
             </div>
             <div class="col-sm-3">
                 @if (Model.JobTicket.JobType == "Installation")
@@ -124,7 +129,7 @@
 </div>
 
 @* ===================== STATUS + REMARKS (leader only) ===================== *@
-@if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
+@if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing && Model.JobTicket.IsAccessibleToFieldTechnician)
 {
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body p-4">
@@ -138,11 +143,12 @@
                             @foreach (var opt in TM_PE.Pages.FieldTechnician.DetailsModel.StatusOptions)
                             {
                                 @* Once work has left Pending it can never go back, so Pending is
-                                   only offered while it's still the current status. Reschedule
+                                   only offered while it's still the current status — an Overdue
+                                   ticket is just an expired Pending one, so it counts too. Reschedule
                                    Request can be selected by the team leader at any time — doing so
                                    locks the ticket from further field-technician edits until the
                                    manager approves/acts on the request. *@
-                                if (opt == "Pending" && Model.JobTicket.Status != "Pending")
+                                if (opt == "Pending" && !Model.JobTicket.IsPendingOrOverdue)
                                 {
                                     continue;
                                 }
@@ -171,7 +177,7 @@
                     <div class="col-sm-8">
                         <label class="form-label small">Remarks</label>
                         <input type="text" name="remarks" id="remarksInput" class="form-control" maxlength="500"
-                               value="@Model.PendingRemarks" placeholder="Optional notes about this update" />
+                               value="@Model.PendingRemarks" placeholder="-Add remarks-" />
                     </div>
                 </div>
             </form>
@@ -196,6 +202,20 @@ else if (Model.IsLeader && Model.JobTicket.Status == "Reschedule Request")
         </div>
     </div>
 }
+else if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing && !Model.JobTicket.IsAccessibleToFieldTechnician)
+{
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body p-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-flag me-1"></i> Update Status</h6>
+            <div class="alert alert-secondary mb-0">
+                <i class="bi bi-calendar-x me-1"></i>
+                This job order isn't accessible yet. It's scheduled for
+                <strong>@Model.JobTicket.ServiceDate.ToString("M/d/yyyy")</strong> —
+                you'll be able to update its status, remarks, and files once that date arrives.
+            </div>
+        </div>
+    </div>
+}
 else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
 {
     <div class="card shadow-sm border-0 mb-3">
@@ -215,7 +235,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
         "Reschedule Request" => "bg-warning-subtle text-warning-emphasis",
-        "Rescheduled by Manager" => "bg-primary-subtle text-primary",
+        "Rescheduled" => "bg-primary-subtle text-primary",
         _ => "bg-secondary-subtle text-secondary"
     };
 }
@@ -366,7 +386,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                 }
             </p>
 
-            @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
+            @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing && Model.JobTicket.IsAccessibleToFieldTechnician)
             {
                 <form method="post" enctype="multipart/form-data" asp-page-handler="UploadSubmission" id="uploadSubmissionForm">
                     <input type="hidden" name="jobTicketId" value="@Model.JobTicket.JobTicketID" />
@@ -401,7 +421,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                         var isImage = TM_PE.Pages.FieldTechnician.DetailsModel.ImageExtensions.Contains(ext);
                         <div class="col-md-3 col-sm-4 col-6">
                             <div class="card h-100 position-relative">
-                                @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
+                                @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing && Model.JobTicket.IsAccessibleToFieldTechnician)
                                 {
                                     <form method="post" asp-page-handler="DeleteSubmission"
                                           onsubmit="return confirm('Remove this file?');"
@@ -445,7 +465,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
     </div>
 </div>
 <div class="d-flex justify-content-end gap-2 mb-4">
-    @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing)
+    @if (Model.IsLeader && !Model.JobTicket.IsLockedFromFieldTechnicianEditing && Model.JobTicket.IsAccessibleToFieldTechnician)
     {
         <form method="post"
               asp-page-handler="CancelEdit"

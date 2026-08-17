@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <Folder Include="Pages\Manager\PerformanceEvaluations\" />
+    <Folder Include="wwwroot\uploads\activity-submissions\" />
+    <Folder Include="wwwroot\uploads\jobticket-submissions\" />
   </ItemGroup>
 
 </Project>

@@ -177,7 +177,7 @@
                     <div class="col-sm-8">
                         <label class="form-label small">Remarks</label>
                         <input type="text" name="remarks" id="remarksInput" class="form-control" maxlength="500"
-                               value="@Model.PendingRemarks" placeholder="-Add remarks-" />
+                               value="@Model.PendingRemarks" placeholder="Optional notes about this update" />
                     </div>
                 </div>
             </form>
@@ -227,6 +227,9 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
 }
 
 @* ===================== HISTORY OF SUBMISSION ===================== *@
+@* Hidden entirely until the leader has actually submitted something for
+   this job order — no empty-state placeholder while it's still Pending
+   with nothing submitted yet. *@
 @{
     Func<string, string> historyBadgeClass = s => s switch
     {
@@ -239,17 +242,17 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
         _ => "bg-secondary-subtle text-secondary"
     };
 }
-<div class="card shadow-sm border-0 mb-3">
-    <div class="card-body p-4">
-        <h6 class="fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> History of Submission</h6>
-        <p class="text-muted small mb-3">
-            Every status update the team leader has saved for this job order, in order.
-            Click <strong>View</strong> on any row to see the full details for that update,
-            including whatever photos or files were attached at the time.
-        </p>
+@if (Model.JobTicket.SubmissionHistory != null && Model.JobTicket.SubmissionHistory.Any())
+{
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body p-4">
+            <h6 class="fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> History of Submission</h6>
+            <p class="text-muted small mb-3">
+                Every status update the team leader has saved for this job order, in order.
+                Click <strong>View</strong> on any row to see the full details for that update,
+                including whatever photos or files were attached at the time.
+            </p>
 
-        @if (Model.JobTicket.SubmissionHistory != null && Model.JobTicket.SubmissionHistory.Any())
-        {
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
@@ -282,13 +285,9 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                     </tbody>
                 </table>
             </div>
-        }
-        else
-        {
-            <div class="text-muted">No history of submission yet.</div>
-        }
+        </div>
     </div>
-</div>
+}
 
 @* ===================== HISTORY OF SUBMISSION — VIEW MODALS ===================== *@
 @if (Model.JobTicket.SubmissionHistory != null && Model.JobTicket.SubmissionHistory.Any())

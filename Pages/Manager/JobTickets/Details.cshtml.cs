@@ -37,8 +37,8 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             var ticket = await _context.JobTickets
                 .Include(t => t.Assignments).ThenInclude(a => a.Employee)
-                .Include(t => t.Submissions).ThenInclude(s => s.Employee)
                 .Include(t => t.RescheduleHistory).ThenInclude(h => h.ArchivedSubmissions)
+                .Include(t => t.SubmissionHistory).ThenInclude(h => h.ArchivedSubmissions)
                 .FirstOrDefaultAsync(t => t.JobTicketID == id);
 
             if (ticket == null)
@@ -50,12 +50,11 @@ namespace TM_PE.Pages.Manager.JobTickets
             // opened rather than relying on whatever was last saved.
             await JobTicketOverdueChecker.RefreshAsync(_context, new[] { ticket });
 
-            ticket.Submissions = ticket.Submissions
-                .Where(s => s.RescheduleHistoryID == null)
-                .OrderByDescending(s => s.DateSubmitted)
+            ticket.RescheduleHistory = ticket.RescheduleHistory
+                .OrderByDescending(h => h.DateChanged)
                 .ToList();
 
-            ticket.RescheduleHistory = ticket.RescheduleHistory
+            ticket.SubmissionHistory = ticket.SubmissionHistory
                 .OrderByDescending(h => h.DateChanged)
                 .ToList();
 

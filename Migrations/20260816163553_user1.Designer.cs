@@ -12,8 +12,8 @@ using TM_PE.Data;
 namespace TM_PE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260801082613_user4")]
-    partial class user4
+    [Migration("20260816163553_user1")]
+    partial class user1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -163,6 +163,219 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_employees");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.JobTicket", b =>
+                {
+                    b.Property<int>("JobTicketID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketID"));
+
+                    b.Property<string>("ClientFullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DateOfCompletion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("FiberPlan")
+                        .HasColumnType("int");
+
+                    b.Property<string>("JobType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("LocationAddress")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("NearestLandmark")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("PrimaryNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SecondaryNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("ServiceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("JobTicketID");
+
+                    b.ToTable("tbl_jobticket");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketAssignment", b =>
+                {
+                    b.Property<int>("JobTicketAssignmentID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketAssignmentID"));
+
+                    b.Property<DateTime>("AssignedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsLeader")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("JobTicketID")
+                        .HasColumnType("int");
+
+                    b.HasKey("JobTicketAssignmentID");
+
+                    b.HasIndex("EmployeeID");
+
+                    b.HasIndex("JobTicketID");
+
+                    b.ToTable("tbl_jobticketassignment");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketRescheduleHistory", b =>
+                {
+                    b.Property<int>("JobTicketRescheduleHistoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketRescheduleHistoryID"));
+
+                    b.Property<DateTime>("DateChanged")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("JobTicketID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NewServiceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("OldServiceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PreviousRemarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("JobTicketRescheduleHistoryID");
+
+                    b.HasIndex("JobTicketID");
+
+                    b.ToTable("tbl_jobticketreschedulehistory");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketSubmission", b =>
+                {
+                    b.Property<int>("JobTicketSubmissionID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketSubmissionID"));
+
+                    b.Property<DateTime>("DateSubmitted")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("JobTicketID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RescheduleHistoryID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SubmissionHistoryID")
+                        .HasColumnType("int");
+
+                    b.HasKey("JobTicketSubmissionID");
+
+                    b.HasIndex("EmployeeID");
+
+                    b.HasIndex("JobTicketID");
+
+                    b.HasIndex("RescheduleHistoryID");
+
+                    b.HasIndex("SubmissionHistoryID");
+
+                    b.ToTable("tbl_jobticketsubmission");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
+                {
+                    b.Property<int>("JobTicketSubmissionHistoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketSubmissionHistoryID"));
+
+                    b.Property<DateTime>("DateChanged")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("JobTicketID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("JobTicketSubmissionHistoryID");
+
+                    b.HasIndex("JobTicketID");
+
+                    b.ToTable("tbl_jobticketsubmissionhistory");
+                });
+
             modelBuilder.Entity("TM_PE.Model.OfficeTask", b =>
                 {
                     b.Property<int>("OfficeTaskID")
@@ -301,6 +514,80 @@ namespace TM_PE.Migrations
                     b.Navigation("Department");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.JobTicketAssignment", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
+                        .WithMany("Assignments")
+                        .HasForeignKey("JobTicketID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("JobTicket");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketRescheduleHistory", b =>
+                {
+                    b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
+                        .WithMany("RescheduleHistory")
+                        .HasForeignKey("JobTicketID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobTicket");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketSubmission", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
+                        .WithMany("Submissions")
+                        .HasForeignKey("JobTicketID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.JobTicketRescheduleHistory", "RescheduleHistory")
+                        .WithMany("ArchivedSubmissions")
+                        .HasForeignKey("RescheduleHistoryID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("TM_PE.Model.JobTicketSubmissionHistory", "SubmissionHistory")
+                        .WithMany("ArchivedSubmissions")
+                        .HasForeignKey("SubmissionHistoryID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("JobTicket");
+
+                    b.Navigation("RescheduleHistory");
+
+                    b.Navigation("SubmissionHistory");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
+                {
+                    b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
+                        .WithMany("SubmissionHistory")
+                        .HasForeignKey("JobTicketID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobTicket");
+                });
+
             modelBuilder.Entity("TM_PE.Model.TaskActivity", b =>
                 {
                     b.HasOne("TM_PE.Model.Employee", "AssignedEmployee")
@@ -345,6 +632,27 @@ namespace TM_PE.Migrations
             modelBuilder.Entity("TM_PE.Model.Employee", b =>
                 {
                     b.Navigation("TaskAssignments");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicket", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("RescheduleHistory");
+
+                    b.Navigation("SubmissionHistory");
+
+                    b.Navigation("Submissions");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketRescheduleHistory", b =>
+                {
+                    b.Navigation("ArchivedSubmissions");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
+                {
+                    b.Navigation("ArchivedSubmissions");
                 });
 
             modelBuilder.Entity("TM_PE.Model.OfficeTask", b =>

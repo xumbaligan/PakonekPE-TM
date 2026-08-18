@@ -4,6 +4,9 @@
 @{
     ViewData["Title"] = "Edit Job Ticket";
     Layout = "_Layout";
+
+    string FiberPlanDisplay(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d+$") ? $"₱{name} / month" : name;
 }
 
 <div class="card shadow-sm border-0">
@@ -73,7 +76,13 @@
                         <option value="">Select a plan</option>
                         @foreach (var plan in Model.FiberPlanOptions)
                         {
-                            <option value="@plan" selected="@(plan == Model.JobTicket.FiberPlan)">₱@plan / month</option>
+                            <option value="@plan.PlanName" selected="@(plan.PlanName == Model.JobTicket.FiberPlan)">@FiberPlanDisplay(plan.PlanName)</option>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.JobTicket.FiberPlan) && !Model.FiberPlanOptions.Any(p => p.PlanName == Model.JobTicket.FiberPlan))
+                        {
+                            <!-- This ticket's plan was later removed from the manager-maintained list;
+                                 still show it here so the current value isn't silently lost. -->
+                            <option value="@Model.JobTicket.FiberPlan" selected="selected">@FiberPlanDisplay(Model.JobTicket.FiberPlan) (no longer offered)</option>
                         }
                     </select>
                     <span asp-validation-for="JobTicket.FiberPlan" class="text-danger"></span>
@@ -95,7 +104,7 @@
                 </div>
 
                 <div class="col-md-6 mt-3">
-                    <label class="form-label fw-semibold">Date of Completion <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold">Due Date <span class="text-danger">*</span></label>
                     <input asp-for="JobTicket.DateOfCompletion" type="date" id="dateOfCompletionInput"
                            value="@(Model.JobTicket.DateOfCompletion?.ToString("yyyy-MM-dd"))"
                            class="form-control" />

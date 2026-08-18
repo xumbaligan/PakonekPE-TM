@@ -106,7 +106,8 @@ namespace TM_PE.Pages.Manager.WorkLoadMonitoring
                         JobType = t.JobType,
                         ClientFullName = t.ClientFullName,
                         Status = t.Status,
-                        ServiceDate = t.ServiceDate
+                        ServiceDate = t.ServiceDate,
+                        DueDate = t.DateOfCompletion
                     }).ToList()
                 };
             })
@@ -135,6 +136,7 @@ namespace TM_PE.Pages.Manager.WorkLoadMonitoring
                         TaskNumber = t.TaskNumber,
                         TaskName = t.TaskName,
                         Status = t.Status,
+                        DateCreated = t.DateCreated,
                         DueDate = t.DueDate
                     }).ToList()
                 };
@@ -251,6 +253,7 @@ namespace TM_PE.Pages.Manager.WorkLoadMonitoring
             public string ClientFullName { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty;
             public DateTime ServiceDate { get; set; }
+            public DateTime? DueDate { get; set; }
         }
 
         public class StaffTaskLoad
@@ -267,6 +270,7 @@ namespace TM_PE.Pages.Manager.WorkLoadMonitoring
             public string TaskNumber { get; set; } = string.Empty;
             public string TaskName { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty;
+            public DateTime DateCreated { get; set; }
             public DateTime DueDate { get; set; }
         }
 

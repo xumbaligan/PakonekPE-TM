@@ -3,10 +3,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TM_PE.Model
 {
-    // Fiber subscription plans a job ticket can be created for (monthly price, in PHP).
-    public static class FiberPlans
+    // Fiber subscription plans a job ticket can be created for. Managers can add/remove
+    // plans at runtime (see Pages/Manager/JobTickets/Create.cshtml, "Fiber Plans" modal);
+    // the actual list now lives in the tbl_fiberplan table (see the FiberPlan entity below)
+    // instead of being hardcoded.
+    public static class FiberPlanRules
     {
-        public static readonly int[] Allowed = { 999, 1199, 1499, 1999, 2499, 2999 };
+        // Letters, numbers, spaces, and a small set of punctuation commonly needed
+        // for plan names/prices (₱, ., ,, -, /, #, &, parentheses).
+        public const string AllowedPattern = @"^[A-Za-z0-9À-ÖØ-öø-ÿ.,\-\/₱#&()\s]+$";
+        public const int MaxLength = 50;
     }
 
     // The kind of job a ticket covers. Drives which fields appear on the form.
@@ -117,8 +123,10 @@ namespace TM_PE.Model
         [RegularExpression(@"^[0-9+\-\s()]{7,20}$", ErrorMessage = "Enter a valid contact number.")]
         public string? SecondaryNumber { get; set; }
 
-        // Only used when JobType == Installation. One of FiberPlans.Allowed.
-        public int? FiberPlan { get; set; }
+        // Only used when JobType == Installation. Free-text plan name/price chosen
+        // from the manager-maintained tbl_fiberplan list (see FiberPlan entity below).
+        [StringLength(FiberPlanRules.MaxLength)]
+        public string? FiberPlan { get; set; }
 
         // Only used when JobType == Repair or Maintenance.
         [StringLength(500)]
@@ -214,5 +222,25 @@ namespace TM_PE.Model
         // whatever photos/files were attached at the time of each save.
         public ICollection<JobTicketSubmissionHistory> SubmissionHistory { get; set; }
             = new List<JobTicketSubmissionHistory>();
+    }
+
+    // A manager-maintained fiber plan option, offered in the "Fiber Plan"
+    // dropdown on the Job Ticket Create page (Installation jobs only). Managers
+    // can add or remove entries at runtime via the "Fiber Plans" modal — see
+    // Pages/Manager/JobTickets/Create.cshtml(.cs). JobTicket.FiberPlan stores the
+    // chosen plan's PlanName directly (not a foreign key), so removing a plan
+    // here never affects tickets that already used it.
+    [Table("tbl_fiberplan")]
+    public class FiberPlan
+    {
+        [Key]
+        public int FiberPlanID { get; set; }
+
+        [Required(ErrorMessage = "Please enter a fiber plan name.")]
+        [StringLength(FiberPlanRules.MaxLength, ErrorMessage = "Fiber plan name is too long (max 50 characters).")]
+        [RegularExpression(FiberPlanRules.AllowedPattern, ErrorMessage = "Only letters, numbers, spaces, and . , - / ₱ # & ( ) are allowed.")]
+        public string PlanName { get; set; } = string.Empty;
+
+        public DateTime DateCreated { get; set; } = DateTime.Now;
     }
 }

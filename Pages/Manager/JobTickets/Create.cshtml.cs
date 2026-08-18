@@ -40,7 +40,10 @@ namespace TM_PE.Pages.Manager.JobTickets
         // Read-only preview of the ticket number that will be generated on save
         public string NextTicketNumber { get; set; } = string.Empty;
 
-        public int[] FiberPlanOptions { get; set; } = FiberPlans.Allowed;
+        // Manager-maintained fiber plan options (see the "Fiber Plans" modal on this
+        // page) — loaded fresh from tbl_fiberplan on every GET/failed POST since
+        // managers can add/remove entries at any time.
+        public List<Model.FiberPlan> FiberPlanOptions { get; set; } = new();
 
         public string[] JobTypeOptions { get; set; } = JobTypes.Allowed;
 
@@ -49,6 +52,10 @@ namespace TM_PE.Pages.Manager.JobTickets
             FieldTechnicianList = await _context.Employees
                 .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician)
                 .OrderBy(e => e.FullName)
+                .ToListAsync();
+
+            FiberPlanOptions = await _context.FiberPlans
+                .OrderBy(f => f.FiberPlanID)
                 .ToListAsync();
 
             JobTicket.DateCreated = DateTime.Now;
@@ -90,7 +97,8 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             if (JobTicket.JobType == JobTypes.Installation)
             {
-                if (JobTicket.FiberPlan == null || !FiberPlans.Allowed.Contains(JobTicket.FiberPlan.Value))
+                if (string.IsNullOrWhiteSpace(JobTicket.FiberPlan) ||
+                    !await _context.FiberPlans.AnyAsync(f => f.PlanName == JobTicket.FiberPlan))
                     ModelState.AddModelError("JobTicket.FiberPlan", "Please select a valid fiber plan.");
 
                 JobTicket.Description = null;
@@ -156,6 +164,9 @@ namespace TM_PE.Pages.Manager.JobTickets
                     .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician)
                     .OrderBy(e => e.FullName)
                     .ToListAsync();
+                FiberPlanOptions = await _context.FiberPlans
+                    .OrderBy(f => f.FiberPlanID)
+                    .ToListAsync();
                 NextTicketNumber = await GenerateTicketNumberAsync();
 
                 // Re-hydrate the previously-selected assignees (in the order they
@@ -190,6 +201,47 @@ namespace TM_PE.Pages.Manager.JobTickets
             await _context.SaveChangesAsync();
 
             return RedirectToPage("Index");
+        }
+
+        // Adds a new fiber plan to the manager-maintained list (see the "Fiber
+        // Plans" modal). Called via AJAX from the Create page; returns JSON
+        // rather than redirecting since it doesn't touch the ticket form itself.
+        public async Task<IActionResult> OnPostAddFiberPlanAsync(string planName)
+        {
+            planName = (planName ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(planName))
+                return new JsonResult(new { success = false, message = "Please enter a fiber plan." }) { StatusCode = 400 };
+
+            if (planName.Length > Model.FiberPlanRules.MaxLength)
+                return new JsonResult(new { success = false, message = $"Fiber plan name is too long (max {Model.FiberPlanRules.MaxLength} characters)." }) { StatusCode = 400 };
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(planName, Model.FiberPlanRules.AllowedPattern))
+                return new JsonResult(new { success = false, message = "Only letters, numbers, spaces, and . , - / ₱ # & ( ) are allowed." }) { StatusCode = 400 };
+
+            if (await _context.FiberPlans.AnyAsync(f => f.PlanName == planName))
+                return new JsonResult(new { success = false, message = "That fiber plan already exists." }) { StatusCode = 400 };
+
+            var plan = new Model.FiberPlan { PlanName = planName };
+            _context.FiberPlans.Add(plan);
+            await _context.SaveChangesAsync();
+
+            return new JsonResult(new { success = true, id = plan.FiberPlanID, name = plan.PlanName });
+        }
+
+        // Removes a fiber plan from the manager-maintained list. Tickets that
+        // already used this plan keep their FiberPlan text untouched — it's
+        // stored directly on the ticket, not as a foreign key.
+        public async Task<IActionResult> OnPostDeleteFiberPlanAsync(int id)
+        {
+            var plan = await _context.FiberPlans.FindAsync(id);
+            if (plan == null)
+                return new JsonResult(new { success = false, message = "Fiber plan not found." }) { StatusCode = 404 };
+
+            _context.FiberPlans.Remove(plan);
+            await _context.SaveChangesAsync();
+
+            return new JsonResult(new { success = true });
         }
 
         private async Task<string> GenerateTicketNumberAsync()

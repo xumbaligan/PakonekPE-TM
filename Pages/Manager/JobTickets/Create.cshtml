@@ -4,6 +4,12 @@
 @{
     ViewData["Title"] = "Create Job Ticket";
     Layout = "_Layout";
+
+    // Purely numeric plan names (the original hardcoded prices, e.g. "999") are
+    // shown the way they always were ("₱999 / month"); free-form plans a manager
+    // types into the "Fiber Plans" modal (e.g. "Fiber 500 Promo") are shown as-is.
+    string FiberPlanDisplay(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d+$") ? $"₱{name} / month" : name;
 }
 
 <div class="card shadow-sm border-0">
@@ -53,7 +59,7 @@
                 </label>
 
                 <select asp-for="JobTicket.JobType" id="jobTypeSelect" class="form-select" required>
-                    
+
                     @foreach (var type in Model.JobTypeOptions)
                     {
                         <option value="@type">@type</option>
@@ -114,13 +120,19 @@
                         Fiber Plan <span class="text-danger">*</span>
                     </label>
 
-                    <select asp-for="JobTicket.FiberPlan" id="fiberPlanSelect" class="form-select">
-                        <option value="">Select a plan</option>
-                        @foreach (var plan in Model.FiberPlanOptions)
-                        {
-                            <option value="@plan">₱@plan / month</option>
-                        }
-                    </select>
+                    <div class="d-flex gap-2">
+                        <select asp-for="JobTicket.FiberPlan" id="fiberPlanSelect" class="form-select">
+                            <option value="">Select a plan</option>
+                            @foreach (var plan in Model.FiberPlanOptions)
+                            {
+                                <option value="@plan.PlanName">@FiberPlanDisplay(plan.PlanName)</option>
+                            }
+                        </select>
+
+                        <button type="button" class="btn btn-outline-primary text-nowrap" id="openFiberPlanModalBtn" data-bs-toggle="modal" data-bs-target="#fiberPlanModal">
+                            + Add Fiber Plan
+                        </button>
+                    </div>
 
                     <span asp-validation-for="JobTicket.FiberPlan" class="text-danger"></span>
                 </div>
@@ -158,7 +170,7 @@
 
                 <div class="col-md-6 mt-3">
                     <label class="form-label fw-semibold">
-                        Date of Completion <span class="text-danger">*</span>
+                        Due Date <span class="text-danger">*</span>
                     </label>
 
                     <input asp-for="JobTicket.DateOfCompletion"
@@ -252,6 +264,37 @@
 
         </form>
 
+    </div>
+</div>
+
+@* ===================== Modal: Fiber Plans ===================== *@
+<div class="modal fade" id="fiberPlanModal" tabindex="-1" aria-labelledby="fiberPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fiberPlanModalLabel">Fiber Plans</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="newFiberPlanInput" class="form-control" placeholder="e.g. 1299 or Fiber 500 Promo" maxlength="50" />
+                    <button type="button" id="addFiberPlanBtn" class="btn btn-primary text-nowrap">Add</button>
+                </div>
+                <div class="form-text mb-2">Letters, numbers, spaces, and . , - / ₱ # &amp; ( ) are allowed.</div>
+                <div id="fiberPlanModalError" class="text-danger small mb-2 d-none"></div>
+
+                <ul class="list-group" id="fiberPlanList">
+                    @foreach (var plan in Model.FiberPlanOptions)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center" data-plan-id="@plan.FiberPlanID" data-plan-name="@plan.PlanName">
+                            <span>@FiberPlanDisplay(plan.PlanName)</span>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 fiber-plan-delete-btn" title="Delete">&times;</button>
+                        </li>
+                    }
+                </ul>
+                <div id="noFiberPlansMsg" class="text-muted small mt-2 @(Model.FiberPlanOptions.Any() ? "d-none" : "")">No fiber plans yet.</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -364,16 +407,16 @@
             // etc). Without this, the list below would start empty again and the
             // manager would have to re-pick every technician from scratch.
             const preSelectedEmployees = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                            Model.SelectedEmployees.Select(e => new { id = e.EmployeeId.ToString(), name = e.FullName })));
-        const preSelectedLeaderId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                        Model.LeaderEmployeeId > 0 ? Model.LeaderEmployeeId.ToString() : null));
+                                                    Model.SelectedEmployees.Select(e => new { id = e.EmployeeId.ToString(), name = e.FullName })));
+    const preSelectedLeaderId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                        Model.LeaderEmployeeId > 0 ? Model.LeaderEmployeeId.ToString() : null));
 
-        // Once a technician is selected, their option disappears from the
-        // dropdown; removing them from the list restores it in its original
-        // (alphabetical) position.
-        const originalOptions = Array.from(employeeSelect.options).filter(o => o.value !== '');
-        const optionMap = new Map();
-        originalOptions.forEach(o => optionMap.set(o.value, o));
+    // Once a technician is selected, their option disappears from the
+    // dropdown; removing them from the list restores it in its original
+    // (alphabetical) position.
+    const originalOptions = Array.from(employeeSelect.options).filter(o => o.value !== '');
+    const optionMap = new Map();
+    originalOptions.forEach(o => optionMap.set(o.value, o));
 
             function hideOptionFromDropdown(id) {
                 const opt = optionMap.get(id);
@@ -511,6 +554,154 @@
 
                 employeeSelect.value = '';
             });
+
+            // ---------------- FIBER PLANS MODAL ----------------
+            (function () {
+                const planSelect = document.getElementById('fiberPlanSelect');
+                const planList = document.getElementById('fiberPlanList');
+                const noPlansMsg = document.getElementById('noFiberPlansMsg');
+                const newPlanInput = document.getElementById('newFiberPlanInput');
+                const addPlanBtn = document.getElementById('addFiberPlanBtn');
+                const errorBox = document.getElementById('fiberPlanModalError');
+
+                // Same restriction enforced server-side (Model.FiberPlanRules.AllowedPattern):
+                // letters, numbers, spaces, and a small set of punctuation.
+                const allowedPattern = /^[A-Za-z0-9À-ÖØ-öø-ÿ.,\-\/₱#&()\s]+$/;
+
+                const token = document.querySelector('#ticketForm input[name="__RequestVerificationToken"]')?.value || '';
+
+                // Purely numeric plans keep the original "₱999 / month" display;
+                // free-form plans are shown as typed.
+                function formatPlan(name) {
+                    return /^\d+$/.test(name) ? `₱${name} / month` : name;
+                }
+
+                function showError(msg) {
+                    errorBox.textContent = msg;
+                    errorBox.classList.remove('d-none');
+                }
+
+                function clearError() {
+                    errorBox.classList.add('d-none');
+                    errorBox.textContent = '';
+                }
+
+                function addRow(id, name) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.dataset.planId = id;
+                    li.dataset.planName = name;
+                    li.innerHTML = `<span></span><button type="button" class="btn btn-sm btn-link text-danger p-0 fiber-plan-delete-btn" title="Delete">&times;</button>`;
+                    li.querySelector('span').textContent = formatPlan(name);
+                    planList.appendChild(li);
+                    noPlansMsg.classList.add('d-none');
+                }
+
+                function addOption(name) {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = formatPlan(name);
+                    planSelect.appendChild(opt);
+                }
+
+                addPlanBtn.addEventListener('click', async function () {
+                    clearError();
+                    const name = newPlanInput.value.trim();
+
+                    if (!name) {
+                        showError('Please enter a fiber plan.');
+                        return;
+                    }
+                    if (name.length > 50) {
+                        showError('Fiber plan name is too long (max 50 characters).');
+                        return;
+                    }
+                    if (!allowedPattern.test(name)) {
+                        showError('Only letters, numbers, spaces, and . , - / ₱ # & ( ) are allowed.');
+                        return;
+                    }
+
+                    addPlanBtn.disabled = true;
+                    try {
+                        const body = new URLSearchParams();
+                        body.set('planName', name);
+                        body.set('__RequestVerificationToken', token);
+
+                        const res = await fetch('?handler=AddFiberPlan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: body.toString()
+                        });
+                        const data = await res.json();
+
+                        if (!res.ok || !data.success) {
+                            showError(data.message || 'Could not add that fiber plan.');
+                            return;
+                        }
+
+                        addRow(data.id, data.name);
+                        addOption(data.name);
+                        newPlanInput.value = '';
+                    } catch (err) {
+                        showError('Something went wrong. Please try again.');
+                    } finally {
+                        addPlanBtn.disabled = false;
+                    }
+                });
+
+                newPlanInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addPlanBtn.click();
+                    }
+                });
+
+                planList.addEventListener('click', async function (e) {
+                    const btn = e.target.closest('.fiber-plan-delete-btn');
+                    if (!btn) return;
+
+                    clearError();
+                    const li = btn.closest('li');
+                    const id = li.dataset.planId;
+                    const name = li.dataset.planName;
+
+                    btn.disabled = true;
+                    try {
+                        const body = new URLSearchParams();
+                        body.set('id', id);
+                        body.set('__RequestVerificationToken', token);
+
+                        const res = await fetch('?handler=DeleteFiberPlan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: body.toString()
+                        });
+                        const data = await res.json();
+
+                        if (!res.ok || !data.success) {
+                            showError(data.message || 'Could not delete that fiber plan.');
+                            btn.disabled = false;
+                            return;
+                        }
+
+                        li.remove();
+                        if (!planList.children.length) {
+                            noPlansMsg.classList.remove('d-none');
+                        }
+
+                        // If the plan being removed was selected in the main form,
+                        // clear the selection so a deleted plan can't be submitted.
+                        const opt = Array.from(planSelect.options).find(o => o.value === name);
+                        if (opt) {
+                            if (planSelect.value === name) planSelect.value = '';
+                            opt.remove();
+                        }
+                    } catch (err) {
+                        showError('Something went wrong. Please try again.');
+                        btn.disabled = false;
+                    }
+                });
+            })();
 
             document.getElementById('ticketForm').addEventListener('submit', function (e) {
                 if (addedEmployees.size < 2) {

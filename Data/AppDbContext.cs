@@ -23,6 +23,7 @@ namespace TM_PE.Data
         public DbSet<JobTicketSubmission> JobTicketSubmissions => Set<JobTicketSubmission>();
         public DbSet<JobTicketRescheduleHistory> JobTicketRescheduleHistories => Set<JobTicketRescheduleHistory>();
         public DbSet<JobTicketSubmissionHistory> JobTicketSubmissionHistories => Set<JobTicketSubmissionHistory>();
+        public DbSet<FiberPlan> FiberPlans => Set<FiberPlan>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -39,6 +40,11 @@ namespace TM_PE.Data
             b.Entity<Criteria>()
                 .Property(e => e.RoleType)
                 .HasConversion<string>();
+
+            // Managers can't add the same fiber plan name twice.
+            b.Entity<FiberPlan>()
+                .HasIndex(f => f.PlanName)
+                .IsUnique();
 
             // Let the database set CreatedAt automatically
             b.Entity<Department>()

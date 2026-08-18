@@ -29,7 +29,10 @@ namespace TM_PE.Pages.Manager.JobTickets
         // correctly if validation fails.
         public DateTime OriginalServiceDate { get; set; }
 
-        public int[] FiberPlanOptions { get; set; } = FiberPlans.Allowed;
+        // Manager-maintained fiber plan options (added/removed from the "Fiber
+        // Plans" modal on the Create page) — loaded fresh since the list can
+        // change at any time.
+        public List<Model.FiberPlan> FiberPlanOptions { get; set; } = new();
 
         public string[] JobTypeOptions { get; set; } = JobTypes.Allowed;
 
@@ -65,6 +68,7 @@ namespace TM_PE.Pages.Manager.JobTickets
             JobTicket = jobTicket;
             OriginalServiceDate = jobTicket.ServiceDate;
             LeaderEmployeeId = jobTicket.Assignments.FirstOrDefault(a => a.IsLeader)?.EmployeeID;
+            FiberPlanOptions = await _context.FiberPlans.OrderBy(f => f.FiberPlanID).ToListAsync();
 
             return Page();
         }
@@ -150,7 +154,14 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             if (JobTicket.JobType == JobTypes.Installation)
             {
-                if (JobTicket.FiberPlan == null || !FiberPlans.Allowed.Contains(JobTicket.FiberPlan.Value))
+                // A plan that was valid when this ticket was created but has since
+                // been removed from the manager-maintained list is still accepted
+                // here as long as the manager didn't actually change it (keeps the
+                // existing value valid instead of forcing an unrelated edit to fail).
+                bool unchangedFromExisting = JobTicket.FiberPlan == ticket.FiberPlan;
+
+                if (string.IsNullOrWhiteSpace(JobTicket.FiberPlan) ||
+                    (!unchangedFromExisting && !await _context.FiberPlans.AnyAsync(f => f.PlanName == JobTicket.FiberPlan)))
                     ModelState.AddModelError("JobTicket.FiberPlan", "Please select a valid fiber plan.");
 
                 JobTicket.Description = null;
@@ -202,6 +213,8 @@ namespace TM_PE.Pages.Manager.JobTickets
                     JobTicket.Status = reload.Status;
                     OriginalServiceDate = reload.ServiceDate;
                 }
+
+                FiberPlanOptions = await _context.FiberPlans.OrderBy(f => f.FiberPlanID).ToListAsync();
 
                 return Page();
             }

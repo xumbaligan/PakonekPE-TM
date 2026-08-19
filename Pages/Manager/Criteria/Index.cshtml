@@ -7,7 +7,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Performance Criteria</h2>
-    <span class="badge badge-soft-primary"><i class="bi bi-eye"></i> View Only</span>
+    @* <a class="btn btn-primary" asp-page="Create"><i class="bi bi-plus-lg"></i> New Criteria</a> *@
 </div>
 
 <form method="get" class="row g-2 mb-3">
@@ -31,20 +31,22 @@
                 <th>Criteria</th>
                 <th>Description</th>
                 <th>Role Type</th>
+                <th>Weight</th>
                 <th>Status</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             @if (!Model.Items.Any())
             {
                 <tr id="emptyRow">
-                    <td colspan="4" class="text-center text-muted py-4">No criteria defined</td>
+                    <td colspan="6" class="text-center text-muted py-4">No criteria defined</td>
                 </tr>
             }
             else
             {
                 <tr id="emptyRow" style="display:none;">
-                    <td colspan="4" class="text-center text-muted py-4">No criteria defined</td>
+                    <td colspan="6" class="text-center text-muted py-4">No criteria defined</td>
                 </tr>
             }
 
@@ -56,6 +58,7 @@
                     <td><strong>@c.CriteriaName</strong></td>
                     <td><span class="text-muted">@c.Description</span></td>
                     <td><span class="badge badge-soft-primary">@c.RoleType</span></td>
+                    <td><span class="badge bg-primary-subtle text-primary">@c.Weight.ToString("0.##")%</span></td>
                     <td>
                         @if (c.IsActive)
                         {
@@ -65,6 +68,11 @@
                         {
                             <span class="badge badge-soft-warning">Inactive</span>
                         }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@c.CriteriaId">
+                            <i class="bi bi-pencil"></i>
+                        </a>
                     </td>
                 </tr>
             }

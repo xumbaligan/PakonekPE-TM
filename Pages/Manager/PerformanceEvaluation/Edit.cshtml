@@ -1,0 +1,164 @@
+﻿@page "{id:int}"
+@model TM_PE.Pages.Manager.PerformanceEvaluation.EditModel
+@{
+    ViewData["Title"] = "Edit Performance Evaluation";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-clipboard-data"></i> Edit Performance Evaluation</h2>
+    <a class="btn btn-outline-secondary" asp-page="Index"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle"></i>
+    This evaluation is its own historical record. Saving changes here never modifies any Job Ticket or Office Task.
+</div>
+
+<form method="post" id="evalForm">
+    <input type="hidden" asp-for="Evaluation.EvaluationID" />
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">Evaluation Details</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Employee</label>
+                        <input class="form-control" value="@(Model.Employee?.FullName) (@Model.Employee?.RoleType)" disabled />
+                        <div class="form-text">The employee on an evaluation can't be changed — create a new evaluation instead.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluator <span class="text-danger">*</span></label>
+                        <input asp-for="Evaluation.EvaluatorName" class="form-control" maxlength="100" />
+                        <span asp-validation-for="Evaluation.EvaluatorName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluation Period <span class="text-danger">*</span></label>
+                        <input asp-for="Evaluation.EvaluationPeriod" class="form-control" maxlength="50" />
+                        <span asp-validation-for="Evaluation.EvaluationPeriod" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluation Date <span class="text-danger">*</span></label>
+                        <input asp-for="Evaluation.EvaluationDate" type="date" class="form-control"
+                               value="@Model.Evaluation.EvaluationDate.ToString("yyyy-MM-dd")" />
+                        <span asp-validation-for="Evaluation.EvaluationDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluation Status</label>
+                        <select asp-for="Evaluation.EvaluationStatus" class="form-select">
+                            <option value="Draft">Draft</option>
+                            <option value="Finalized">Finalized</option>
+                        </select>
+                        <div class="form-text">Setting this to Finalized locks the evaluation from further edits.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">@Model.Employee?.RoleType Criteria</h5>
+                @if (!Model.CriteriaList.Any())
+                {
+                    <div class="text-muted">No active criteria configured for this role type yet. Add some under Manager &gt; Criteria.</div>
+                }
+                else
+                {
+                    <table class="table align-middle">
+                        <thead>
+                            <tr class="text-muted small">
+                                <th>Criteria</th>
+                                <th style="width:140px">Score</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.CriteriaList.Count; i++)
+                            {
+                                var c = Model.CriteriaList[i];
+                                var r = Model.Results[i];
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@c.CriteriaName</div>
+                                        <div class="text-muted small">@c.Description (@c.Weight%)</div>
+                                    </td>
+                                    <td>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control criteria-score-input"
+                                                   name="Results[@i].Score" min="0" max="@c.Weight" step="0.5"
+                                                   value="@r.Score" data-max="@c.Weight" />
+                                            <span class="input-group-text">/ @c.Weight</span>
+                                        </div>
+                                        <input type="hidden" name="Results[@i].CriteriaID" value="@c.CriteriaId" />
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="Results[@i].Remarks"
+                                               maxlength="500" value="@r.Remarks" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            <div class="card p-4">
+                <label class="form-label fw-semibold">General Remarks</label>
+                <textarea asp-for="Evaluation.GeneralRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card p-4 mb-4 sticky-top" style="top:1rem">
+                <h6 class="text-muted">Overall Score (preview)</h6>
+                <div class="display-6 fw-bold" id="overallScorePreview">@Model.Evaluation.OverallScore.ToString("0.#")</div>
+                <div class="text-muted small">out of 100</div>
+                <div class="mt-2">
+                    <span class="badge bg-primary-subtle text-primary" id="overallRatingPreview">@Model.Evaluation.OverallRating</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Changes</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            const scorePreview = document.getElementById('overallScorePreview');
+            const ratingPreview = document.getElementById('overallRatingPreview');
+
+            const bands = [
+                [90, 'Excellent'],
+                [80, 'Very Good'],
+                [70, 'Good'],
+                [60, 'Needs Improvement'],
+                [0, 'Poor']
+            ];
+
+            function ratingFor(score) {
+                for (const [min, label] of bands) {
+                    if (score >= min) return label;
+                }
+                return 'Poor';
+            }
+
+            function recalcPreview() {
+                let total = 0;
+                document.querySelectorAll('.criteria-score-input').forEach(input => {
+                    const max = parseFloat(input.dataset.max || '0');
+                    let val = parseFloat(input.value || '0');
+                    if (isNaN(val)) val = 0;
+                    val = Math.min(Math.max(val, 0), max);
+                    total += val;
+                });
+                scorePreview.textContent = total.toFixed(1);
+                ratingPreview.textContent = ratingFor(total);
+            }
+
+            document.addEventListener('input', function (e) {
+                if (e.target.classList.contains('criteria-score-input')) recalcPreview();
+            });
+        })();
+    </script>
+}

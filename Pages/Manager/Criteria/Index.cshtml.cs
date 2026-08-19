@@ -6,8 +6,9 @@ using CriteriaModel = TM_PE.Model.Criteria;
 
 namespace TM_PE.Pages.Manager.Criteria;
 
-// View-only: managers can browse criteria, but Create/Edit/Delete
-// remain Admin-only (see Pages/Admin/Criteria).
+// Managers can browse and manage criteria here (Create/Edit) — this is the
+// "manage criteria without modifying application code" surface for the
+// Performance Evaluation module. Admin keeps its own copy of these pages too.
 public class IndexModel : PageModel
 {
     private readonly AppDbContext _db;

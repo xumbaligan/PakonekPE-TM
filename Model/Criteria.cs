@@ -24,8 +24,13 @@ namespace TM_PE.Model
         [Column(TypeName = "nvarchar(50)")]
         public RoleType RoleType { get; set; }
 
-        //[Range(1, 10)]
-        //public int MaxScore { get; set; } = 1;
+        // How much this criterion counts toward the Performance Evaluation's
+        // Overall Score, in percentage points (e.g. 25 for "Work Quality — 25%").
+        // Also doubles as the max points an evaluator can award for this
+        // criterion, so weights for a given RoleType should add up to 100.
+        [Range(0, 100, ErrorMessage = "Weight must be between 0 and 100.")]
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal Weight { get; set; } = 0;
 
         public bool IsActive { get; set; } = true;
     }

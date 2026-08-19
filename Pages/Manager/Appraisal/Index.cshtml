@@ -1,0 +1,91 @@
+﻿@page
+@model TM_PE.Pages.Manager.Appraisal.IndexModel
+@{
+    ViewData["Title"] = "Appraisal Records";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-award"></i> Appraisal Records</h2>
+    <a class="btn btn-primary" asp-page="Create"><i class="bi bi-plus-lg"></i> New Appraisal</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input class="form-control" name="Search" value="@Model.Search" placeholder="Search by employee..." />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="StatusFilter" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            <option value="Draft" selected="@(Model.StatusFilter == "Draft")">Draft</option>
+            <option value="Finalized" selected="@(Model.StatusFilter == "Finalized")">Finalized</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-outline-primary w-100" type="submit"><i class="bi bi-search"></i> Filter</button>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0 align-middle">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>Related Evaluation</th>
+                <th>Appraisal Date</th>
+                <th>Overall Rating</th>
+                <th>Recommendation</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Appraisals.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No appraisal records yet.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var a in Model.Appraisals)
+                {
+                    <tr>
+                        <td>
+                            <strong>@(a.Employee?.FullName ?? "—")</strong>
+                            <div class="text-muted small">@a.Employee?.RoleType</div>
+                        </td>
+                        <td>@(a.Evaluation?.EvaluationPeriod ?? "—")</td>
+                        <td>@a.AppraisalDate.ToString("MMM d, yyyy")</td>
+                        <td>@a.OverallRating</td>
+                        <td>@a.CombinedRecommendationLabel()</td>
+                        <td>
+                            @if (a.AppraisalStatus == TM_PE.Model.AppraisalStatus.Finalized)
+                            {
+                                <span class="badge bg-success-subtle text-success-emphasis">Finalized</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary">Draft</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="Details" asp-route-id="@a.AppraisalID">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            @if (a.AppraisalStatus == TM_PE.Model.AppraisalStatus.Draft)
+                            {
+                                <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@a.AppraisalID">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            }
+                            <a class="btn btn-sm btn-outline-danger" asp-page="Delete" asp-route-id="@a.AppraisalID">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

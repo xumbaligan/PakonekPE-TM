@@ -1,0 +1,146 @@
+﻿@page
+@model TM_PE.Pages.Manager.Appraisal.CreateModel
+@{
+    ViewData["Title"] = "New Appraisal";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-award"></i> New Appraisal</h2>
+    <a class="btn btn-outline-secondary" asp-page="Index"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle"></i>
+    Appraisal records the management decision after a Performance Evaluation and its Feedback are
+    already on file. This is its own historical record and doesn't modify the evaluation.
+</div>
+
+<form method="post">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">Appraisal Details</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
+                        <select asp-for="Item.EmployeeID" id="employeeSelect" class="form-select">
+                            <option value="">Select an employee</option>
+                            @foreach (var emp in Model.EmployeeList)
+                            {
+                                <option value="@emp.EmployeeId">@emp.FullName (@emp.RoleType)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Item.EmployeeID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Related Evaluation <span class="text-danger">*</span></label>
+                        <select asp-for="Item.EvaluationID" id="evaluationSelect" class="form-select">
+                            <option value="">Select an evaluation</option>
+                            @foreach (var ev in Model.EvaluationList)
+                            {
+                                <option value="@ev.EvaluationID" data-employee-id="@ev.EmployeeID"
+                                        data-rating="@ev.OverallRating" data-score="@ev.OverallScore">
+                                    @ev.EvaluationPeriod (@ev.OverallRating, @ev.OverallScore.ToString("0.#")/100)
+                                </option>
+                            }
+                        </select>
+                        <span asp-validation-for="Item.EvaluationID" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Appraisal Date <span class="text-danger">*</span></label>
+                        <input asp-for="Item.AppraisalDate" type="date" class="form-control"
+                               value="@Model.Item.AppraisalDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Overall Rating</label>
+                        <input class="form-control" id="ratingPreview" value="" disabled placeholder="Pulled from the selected evaluation" />
+                        <div class="form-text">Copied automatically from the selected evaluation.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">Recommendation</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Primary Recommendation</label>
+                        <select asp-for="Item.Recommendation" class="form-select">
+                            @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                            {
+                                <option value="@r">@TM_PE.Model.Appraisal.RecommendationLabel(r)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Appraisal Status</label>
+                        <select asp-for="Item.AppraisalStatus" class="form-select">
+                            <option value="Draft">Draft</option>
+                            <option value="Finalized">Finalized</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" asp-for="Item.SalaryAdjustmentRecommendation" />
+                            <label class="form-check-label">Salary Adjustment</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" asp-for="Item.PromotionRecommendation" />
+                            <label class="form-check-label">Promotion</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" asp-for="Item.TrainingRecommendation" />
+                            <label class="form-check-label">Training</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <label class="form-label fw-semibold">Manager Remarks</label>
+                <textarea asp-for="Item.ManagerRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card p-4 mb-4 sticky-top" style="top:1rem">
+                <h6 class="text-muted">Feedback on file for this evaluation</h6>
+                <div id="feedbackBox" class="small text-muted">Select an evaluation to see related feedback.</div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Appraisal</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const evaluationSelect = document.getElementById('evaluationSelect');
+            const ratingPreview = document.getElementById('ratingPreview');
+            const allEvalOptions = Array.from(evaluationSelect.options);
+
+            function filterEvaluations() {
+                const empId = employeeSelect.value;
+                evaluationSelect.innerHTML = '';
+                evaluationSelect.appendChild(allEvalOptions[0].cloneNode(true)); // placeholder
+
+                allEvalOptions.slice(1).forEach(opt => {
+                    if (!empId || opt.dataset.employeeId === empId) {
+                        evaluationSelect.appendChild(opt.cloneNode(true));
+                    }
+                });
+                updateRating();
+            }
+
+            function updateRating() {
+                const opt = evaluationSelect.options[evaluationSelect.selectedIndex];
+                ratingPreview.value = opt && opt.dataset.rating ? opt.dataset.rating : '';
+            }
+
+            employeeSelect.addEventListener('change', filterEvaluations);
+            evaluationSelect.addEventListener('change', updateRating);
+            filterEvaluations();
+        })();
+    </script>
+}

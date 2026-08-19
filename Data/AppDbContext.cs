@@ -24,6 +24,10 @@ namespace TM_PE.Data
         public DbSet<JobTicketRescheduleHistory> JobTicketRescheduleHistories => Set<JobTicketRescheduleHistory>();
         public DbSet<JobTicketSubmissionHistory> JobTicketSubmissionHistories => Set<JobTicketSubmissionHistory>();
         public DbSet<FiberPlan> FiberPlans => Set<FiberPlan>();
+        public DbSet<PerformanceEvaluation> PerformanceEvaluations => Set<PerformanceEvaluation>();
+        public DbSet<EvaluationResult> EvaluationResults => Set<EvaluationResult>();
+        public DbSet<Feedback> Feedbacks => Set<Feedback>();
+        public DbSet<Appraisal> Appraisals => Set<Appraisal>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -45,6 +49,75 @@ namespace TM_PE.Data
             b.Entity<FiberPlan>()
                 .HasIndex(f => f.PlanName)
                 .IsUnique();
+
+            b.Entity<PerformanceEvaluation>()
+                .Property(e => e.EvaluationStatus)
+                .HasConversion<string>();
+
+            // An evaluation is a historical record: if the employee it was
+            // written about is later removed, keep the evaluation instead of
+            // deleting it out from under the audit trail.
+            b.Entity<PerformanceEvaluation>()
+                .HasOne(e => e.Employee)
+                .WithMany()
+                .HasForeignKey(e => e.EmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Deleting a Performance Evaluation removes its own results...
+            b.Entity<EvaluationResult>()
+                .HasOne(r => r.PerformanceEvaluation)
+                .WithMany(e => e.Results)
+                .HasForeignKey(r => r.EvaluationID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ...but a result must never disappear just because a Criteria
+            // record was edited/removed elsewhere - block that instead.
+            b.Entity<EvaluationResult>()
+                .HasOne(r => r.Criteria)
+                .WithMany()
+                .HasForeignKey(r => r.CriteriaID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.Entity<Feedback>()
+                .Property(f => f.FeedbackType)
+                .HasConversion<string>();
+
+            // Feedback is its own historical trail: removing the employee it's
+            // about is blocked, and if the evaluation it was tied to is later
+            // deleted, the feedback stays — it just loses that optional link.
+            b.Entity<Feedback>()
+                .HasOne(f => f.Employee)
+                .WithMany()
+                .HasForeignKey(f => f.EmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.Entity<Feedback>()
+                .HasOne(f => f.Evaluation)
+                .WithMany()
+                .HasForeignKey(f => f.EvaluationID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            b.Entity<Appraisal>()
+                .Property(a => a.Recommendation)
+                .HasConversion<string>();
+
+            b.Entity<Appraisal>()
+                .Property(a => a.AppraisalStatus)
+                .HasConversion<string>();
+
+            // Appraisal always follows an Evaluation + Feedback, so the link to
+            // the Evaluation is required and can't be removed out from under it.
+            b.Entity<Appraisal>()
+                .HasOne(a => a.Employee)
+                .WithMany()
+                .HasForeignKey(a => a.EmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.Entity<Appraisal>()
+                .HasOne(a => a.Evaluation)
+                .WithMany()
+                .HasForeignKey(a => a.EvaluationID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Let the database set CreatedAt automatically
             b.Entity<Department>()

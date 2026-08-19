@@ -31,7 +31,7 @@
                 <th>Criteria</th>
                 <th>Description</th>
                 <th>Role Type</th>
-                @* <th>Max Score</th> *@
+                <th>Weight</th>
                 <th>Status</th>
                 <th></th>
             </tr>
@@ -40,13 +40,13 @@
             @if (!Model.Items.Any())
             {
                 <tr id="emptyRow">
-                    <td colspan="5" class="text-center text-muted py-4">No criteria defined</td>
+                    <td colspan="6" class="text-center text-muted py-4">No criteria defined</td>
                 </tr>
             }
             else
             {
                 <tr id="emptyRow" style="display:none;">
-                    <td colspan="5" class="text-center text-muted py-4">No criteria defined</td>
+                    <td colspan="6" class="text-center text-muted py-4">No criteria defined</td>
                 </tr>
             }
 
@@ -57,8 +57,8 @@
                     data-role="@c.RoleType.ToString().ToLower()">
                     <td><strong>@c.CriteriaName</strong></td>
                     <td><span class="text-muted">@c.Description</span></td>
-                    <td><span class="badge badge-soft-primary">@c.RoleType</span></td>@* 
-                    <td><span class="badge bg-primary">@c.MaxScore</span></td> *@
+                    <td><span class="badge badge-soft-primary">@c.RoleType</span></td>
+                    <td><span class="badge bg-primary-subtle text-primary">@c.Weight.ToString("0.##")%</span></td>
                     <td>
                         @if (c.IsActive)
                         {

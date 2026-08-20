@@ -15,7 +15,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
-
         [BindProperty(SupportsGet = true)]
         public string? StatusFilter { get; set; }
 
@@ -23,6 +22,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         {
             var query = _context.PerformanceEvaluations
                 .Include(e => e.Employee)
+                .Include(e => e.Results).ThenInclude(r => r.Criteria)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(StatusFilter) &&
@@ -36,7 +36,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 var term = Search.Trim();
                 query = query.Where(e =>
                     (e.Employee != null && e.Employee.FullName.Contains(term)) ||
-                    e.EvaluationPeriod.Contains(term) ||
                     e.EvaluatorName.Contains(term));
             }
 
@@ -44,6 +43,16 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .OrderByDescending(e => e.EvaluationDate)
                 .ThenByDescending(e => e.EvaluationID)
                 .ToListAsync();
+        }
+
+        // Small DTO for the View modal — only what the modal needs, serialized
+        // straight into the button's data-results attribute.
+        public class ResultView
+        {
+            public string CriteriaName { get; set; } = string.Empty;
+            public decimal Weight { get; set; }
+            public decimal Score { get; set; }
+            public string? Remarks { get; set; }
         }
     }
 }

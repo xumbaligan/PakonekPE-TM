@@ -12,10 +12,16 @@
     <div class="d-flex">
         <aside class="sidebar text-white p-3" style="background-color: #0a2aa8;">
             <h4 class="mb-4"><i class="bi bi-graph-up-arrow"></i> Pakonek</h4>
+            <div class="nav-section-label">Management</div>
             <nav class="nav flex-column">
-                <a class="nav-link text-white" asp-page="/Admin/Departments/Index"><i class="bi bi-building"></i> Departments</a>
                 <a class="nav-link text-white" asp-page="/Admin/Employees/Index"><i class="bi bi-people"></i> Employees</a>
+                <a class="nav-link text-white" asp-page="/Admin/UserManagement/Index"><i class="bi bi-person-badge"></i> Users</a>
+                <a class="nav-link text-white" asp-page="/Admin/Departments/Index"><i class="bi bi-building"></i> Departments</a>
                 <a class="nav-link text-white" asp-page="/Admin/Criteria/Index"><i class="bi bi-list-check"></i> Criteria</a>
+            </nav>
+            <hr class="text-white-50" />
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
             </nav>
         </aside>
         <main class="flex-grow-1 p-4 bg-light min-vh-100">

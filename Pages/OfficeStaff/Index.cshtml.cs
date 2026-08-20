@@ -24,14 +24,14 @@ namespace TM_PE.Pages.OfficeStaff
             var employeeId = HttpContext.Session.GetInt32("CurrentEmployeeId");
             if (employeeId == null)
             {
-                return RedirectToPage("./Select");
+                return RedirectToPage("/Login");
             }
 
             var employee = await _context.Employees.FindAsync(employeeId.Value);
             if (employee == null)
             {
                 HttpContext.Session.Remove("CurrentEmployeeId");
-                return RedirectToPage("./Select");
+                return RedirectToPage("/Login");
             }
 
             CurrentEmployee = employee;
@@ -47,8 +47,8 @@ namespace TM_PE.Pages.OfficeStaff
 
         public IActionResult OnPostSwitchEmployee()
         {
-            HttpContext.Session.Remove("CurrentEmployeeId");
-            return RedirectToPage("./Select");
+            HttpContext.Session.Clear();
+            return RedirectToPage("/Login");
         }
     }
 }

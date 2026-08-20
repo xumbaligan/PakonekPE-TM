@@ -1,0 +1,63 @@
+﻿@page
+@model TM_PE.Pages.Admin.UserManagement.IndexModel
+@{
+    ViewData["Title"] = "User Management";
+    Layout = "_Admin";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-person-badge"></i> User Management</h2>
+    <a class="btn btn-primary" asp-page="Create"><i class="bi bi-plus-lg"></i> New User Account</a>
+</div>
+
+<div class="card">
+    <table class="table table-hover mb-0 align-middle">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Employee</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Last Login</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Accounts.Any())
+            {
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No user accounts yet.</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var a in Model.Accounts)
+                {
+                    <tr>
+                        <td><code>@a.Username</code></td>
+                        <td>@(a.Employee?.FullName ?? "—")</td>
+                        <td><span class="badge badge-soft-primary">@a.Employee?.RoleType</span></td>
+                        <td class="text-muted">@a.DateCreated.ToString("MMM d, yyyy")</td>
+                        <td class="text-muted">@(a.LastLogin.HasValue? a.LastLogin.Value.ToString("MMM d, yyyy h:mm tt") : "Never")</td>
+                        <td>
+                            @if (a.IsActive)
+                            {
+                                <span class="badge badge-soft-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-soft-warning">Disabled</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="Details" asp-route-id="@a.UserAccountID">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

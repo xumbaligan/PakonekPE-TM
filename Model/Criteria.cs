@@ -5,6 +5,8 @@ namespace TM_PE.Model
 {
     public enum RoleType
     {
+        Admin,
+        Manager,
         OfficeStaff,
         FieldTechnician
     }

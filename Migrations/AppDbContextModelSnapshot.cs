@@ -60,61 +60,6 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_activitysubmission");
                 });
 
-            modelBuilder.Entity("TM_PE.Model.Appraisal", b =>
-                {
-                    b.Property<int>("AppraisalID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AppraisalID"));
-
-                    b.Property<DateTime>("AppraisalDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("AppraisalStatus")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime>("DateCreated")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EmployeeID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EvaluationID")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ManagerRemarks")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("OverallRating")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<bool>("PromotionRecommendation")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Recommendation")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<bool>("SalaryAdjustmentRecommendation")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("TrainingRecommendation")
-                        .HasColumnType("bit");
-
-                    b.HasKey("AppraisalID");
-
-                    b.HasIndex("EmployeeID");
-
-                    b.HasIndex("EvaluationID");
-
-                    b.ToTable("tbl_appraisal");
-                });
-
             modelBuilder.Entity("TM_PE.Model.Criteria", b =>
                 {
                     b.Property<int>("CriteriaId")
@@ -611,6 +556,19 @@ namespace TM_PE.Migrations
                     b.Property<decimal>("OverallScore")
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<bool>("PromotionRecommendation")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Recommendation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("SalaryAdjustmentRecommendation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TrainingRecommendation")
+                        .HasColumnType("bit");
+
                     b.HasKey("EvaluationID");
 
                     b.HasIndex("EmployeeID");
@@ -684,6 +642,50 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_taskassignment");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.UserAccount", b =>
+                {
+                    b.Property<int>("UserAccountID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserAccountID"));
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastLogin")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("UserAccountID");
+
+                    b.HasIndex("EmployeeID")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("tbl_useraccount");
+                });
+
             modelBuilder.Entity("TM_PE.Model.ActivitySubmission", b =>
                 {
                     b.HasOne("TM_PE.Model.TaskActivity", "Activity")
@@ -701,25 +703,6 @@ namespace TM_PE.Migrations
                     b.Navigation("Activity");
 
                     b.Navigation("Employee");
-                });
-
-            modelBuilder.Entity("TM_PE.Model.Appraisal", b =>
-                {
-                    b.HasOne("TM_PE.Model.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TM_PE.Model.PerformanceEvaluation", "Evaluation")
-                        .WithMany()
-                        .HasForeignKey("EvaluationID")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
-
-                    b.Navigation("Evaluation");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Employee", b =>
@@ -889,6 +872,17 @@ namespace TM_PE.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("OfficeTask");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.UserAccount", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Department", b =>

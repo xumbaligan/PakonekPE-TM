@@ -6,6 +6,10 @@ using TM_PE.Model;
 
 namespace TM_PE.Pages.Manager.PerformanceEvaluation
 {
+    // Performance Evaluation and Appraisal are saved together here — there is
+    // no separate Appraisal page anymore. One Evaluation Date doubles as the
+    // appraisal date, one Status doubles as the appraisal status, and one
+    // Remarks field covers both.
     public class CreateModel : PageModel
     {
         private readonly AppDbContext _context;
@@ -14,7 +18,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         [BindProperty]
         public Model.PerformanceEvaluation Evaluation { get; set; } = new()
         {
-            EvaluatorName = "Manager",
             EvaluationDate = DateTime.Now,
             EvaluationStatus = EvaluationStatus.Draft
         };
@@ -22,6 +25,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         [BindProperty]
         public List<ResultInput> Results { get; set; } = new();
 
+        // Only Field Technicians / Office Staff can be evaluated — Admin and
+        // Manager accounts are excluded from the picker.
         public List<Employee> EmployeeList { get; set; } = new();
 
         // Criteria are pulled straight from the database (Manager > Criteria),
@@ -32,6 +37,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         // Read-only, supporting context only — nothing here is written back to
         // JobTicket/OfficeTask by this page.
         public Dictionary<int, EmployeeSupportInfo> SupportInfo { get; set; } = new();
+
+        public string CurrentManagerName { get; set; } = "Manager";
 
         public class ResultInput
         {
@@ -57,14 +64,16 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         public async Task<IActionResult> OnPostAsync()
         {
             var employee = await _context.Employees.FindAsync(Evaluation.EmployeeID);
-            if (employee == null)
+            if (employee == null || employee.RoleType is RoleType.Admin or RoleType.Manager)
             {
                 ModelState.AddModelError("Evaluation.EmployeeID", "Please select a valid employee.");
+                employee = null;
             }
 
             ModelState.Remove("Evaluation.Employee");
             ModelState.Remove("Evaluation.OverallScore");
             ModelState.Remove("Evaluation.OverallRating");
+            ModelState.Remove("Evaluation.EvaluatorName");
 
             if (!ModelState.IsValid || employee == null)
             {
@@ -83,11 +92,17 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             var evaluation = new Model.PerformanceEvaluation
             {
                 EmployeeID = employee.EmployeeId,
-                EvaluatorName = Evaluation.EvaluatorName.Trim(),
-                EvaluationPeriod = Evaluation.EvaluationPeriod.Trim(),
+                // The evaluator is always the manager who's currently logged
+                // in — never a free-text field a person could misattribute.
+                EvaluatorName = GetCurrentManagerName(),
                 EvaluationDate = Evaluation.EvaluationDate,
+                EvaluationPeriod = Evaluation.EvaluationPeriod.Trim(),
                 GeneralRemarks = string.IsNullOrWhiteSpace(Evaluation.GeneralRemarks) ? null : Evaluation.GeneralRemarks.Trim(),
                 EvaluationStatus = Evaluation.EvaluationStatus,
+                Recommendation = Evaluation.Recommendation,
+                SalaryAdjustmentRecommendation = Evaluation.SalaryAdjustmentRecommendation,
+                PromotionRecommendation = Evaluation.PromotionRecommendation,
+                TrainingRecommendation = Evaluation.TrainingRecommendation,
                 DateCreated = DateTime.Now
             };
 
@@ -118,10 +133,15 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             return RedirectToPage("Details", new { id = evaluation.EvaluationID });
         }
 
+        private string GetCurrentManagerName() =>
+            HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
+
         private async Task LoadReferenceDataAsync()
         {
+            CurrentManagerName = GetCurrentManagerName();
+
             EmployeeList = await _context.Employees
-                .Where(e => e.IsActive)
+                .Where(e => e.IsActive && e.RoleType != RoleType.Admin && e.RoleType != RoleType.Manager)
                 .OrderBy(e => e.FullName)
                 .ToListAsync();
 

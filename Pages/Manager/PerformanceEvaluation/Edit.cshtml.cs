@@ -58,6 +58,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.EmployeeID");
             ModelState.Remove("Evaluation.OverallScore");
             ModelState.Remove("Evaluation.OverallRating");
+            ModelState.Remove("Evaluation.EvaluatorName");
 
             if (!ModelState.IsValid)
             {
@@ -72,11 +73,16 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .ToListAsync();
             var allowedIds = allowedCriteria.ToDictionary(c => c.CriteriaId);
 
-            evaluation.EvaluatorName = Evaluation.EvaluatorName.Trim();
-            evaluation.EvaluationPeriod = Evaluation.EvaluationPeriod.Trim();
+            // Employee and Evaluator are fixed at creation — this only updates
+            // the date/status/scores/remarks/recommendation, never who the
+            // evaluation is about or who wrote it.
             evaluation.EvaluationDate = Evaluation.EvaluationDate;
             evaluation.GeneralRemarks = string.IsNullOrWhiteSpace(Evaluation.GeneralRemarks) ? null : Evaluation.GeneralRemarks.Trim();
             evaluation.EvaluationStatus = Evaluation.EvaluationStatus;
+            evaluation.Recommendation = Evaluation.Recommendation;
+            evaluation.SalaryAdjustmentRecommendation = Evaluation.SalaryAdjustmentRecommendation;
+            evaluation.PromotionRecommendation = Evaluation.PromotionRecommendation;
+            evaluation.TrainingRecommendation = Evaluation.TrainingRecommendation;
 
             _context.EvaluationResults.RemoveRange(evaluation.Results);
             evaluation.Results.Clear();

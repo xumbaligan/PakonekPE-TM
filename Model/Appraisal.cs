@@ -3,16 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TM_PE.Model
 {
-    public enum AppraisalRecommendation
-    {
-        NoAction,
-        Recognition,
-        TrainingRequired,
-        PerformanceImprovementPlan,
-        PromotionRecommended,
-        SalaryAdjustmentRecommended
-    }
-
     public enum AppraisalStatus
     {
         Draft,

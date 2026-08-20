@@ -20,6 +20,7 @@ namespace TM_PE.Migrations
                     CriteriaName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     RoleType = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    Weight = table.Column<decimal>(type: "decimal(5,2)", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -44,6 +45,20 @@ namespace TM_PE.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tbl_fiberplan",
+                columns: table => new
+                {
+                    FiberPlanID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PlanName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_fiberplan", x => x.FiberPlanID);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tbl_jobticket",
                 columns: table => new
                 {
@@ -55,7 +70,7 @@ namespace TM_PE.Migrations
                     ClientFullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     PrimaryNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     SecondaryNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
-                    FiberPlan = table.Column<int>(type: "int", nullable: true),
+                    FiberPlan = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     ServiceDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     DateOfCompletion = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -189,6 +204,33 @@ namespace TM_PE.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tbl_performanceevaluation",
+                columns: table => new
+                {
+                    EvaluationID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeID = table.Column<int>(type: "int", nullable: false),
+                    EvaluatorName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    EvaluationPeriod = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    EvaluationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OverallScore = table.Column<decimal>(type: "decimal(5,2)", nullable: false),
+                    OverallRating = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    GeneralRemarks = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    EvaluationStatus = table.Column<string>(type: "nvarchar(20)", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_performanceevaluation", x => x.EvaluationID);
+                    table.ForeignKey(
+                        name: "FK_tbl_performanceevaluation_tbl_employees_EmployeeID",
+                        column: x => x.EmployeeID,
+                        principalTable: "tbl_employees",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tbl_taskactivity",
                 columns: table => new
                 {
@@ -245,6 +287,31 @@ namespace TM_PE.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tbl_useraccount",
+                columns: table => new
+                {
+                    UserAccountID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeID = table.Column<int>(type: "int", nullable: false),
+                    Username = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PasswordSalt = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastLogin = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_useraccount", x => x.UserAccountID);
+                    table.ForeignKey(
+                        name: "FK_tbl_useraccount_tbl_employees_EmployeeID",
+                        column: x => x.EmployeeID,
+                        principalTable: "tbl_employees",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tbl_jobticketsubmission",
                 columns: table => new
                 {
@@ -288,6 +355,99 @@ namespace TM_PE.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tbl_appraisal",
+                columns: table => new
+                {
+                    AppraisalID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeID = table.Column<int>(type: "int", nullable: false),
+                    EvaluationID = table.Column<int>(type: "int", nullable: false),
+                    AppraisalDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OverallRating = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Recommendation = table.Column<string>(type: "nvarchar(50)", nullable: false),
+                    SalaryAdjustmentRecommendation = table.Column<bool>(type: "bit", nullable: false),
+                    PromotionRecommendation = table.Column<bool>(type: "bit", nullable: false),
+                    TrainingRecommendation = table.Column<bool>(type: "bit", nullable: false),
+                    ManagerRemarks = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    AppraisalStatus = table.Column<string>(type: "nvarchar(20)", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_appraisal", x => x.AppraisalID);
+                    table.ForeignKey(
+                        name: "FK_tbl_appraisal_tbl_employees_EmployeeID",
+                        column: x => x.EmployeeID,
+                        principalTable: "tbl_employees",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_tbl_appraisal_tbl_performanceevaluation_EvaluationID",
+                        column: x => x.EvaluationID,
+                        principalTable: "tbl_performanceevaluation",
+                        principalColumn: "EvaluationID",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tbl_evaluationresult",
+                columns: table => new
+                {
+                    EvaluationResultID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EvaluationID = table.Column<int>(type: "int", nullable: false),
+                    CriteriaID = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<decimal>(type: "decimal(5,2)", nullable: false),
+                    Remarks = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_evaluationresult", x => x.EvaluationResultID);
+                    table.ForeignKey(
+                        name: "FK_tbl_evaluationresult_tbl_criteria_CriteriaID",
+                        column: x => x.CriteriaID,
+                        principalTable: "tbl_criteria",
+                        principalColumn: "CriteriaId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_tbl_evaluationresult_tbl_performanceevaluation_EvaluationID",
+                        column: x => x.EvaluationID,
+                        principalTable: "tbl_performanceevaluation",
+                        principalColumn: "EvaluationID",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tbl_feedback",
+                columns: table => new
+                {
+                    FeedbackID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmployeeID = table.Column<int>(type: "int", nullable: false),
+                    SubmittedBy = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    EvaluationID = table.Column<int>(type: "int", nullable: true),
+                    FeedbackType = table.Column<string>(type: "nvarchar(20)", nullable: false),
+                    Comment = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tbl_feedback", x => x.FeedbackID);
+                    table.ForeignKey(
+                        name: "FK_tbl_feedback_tbl_employees_EmployeeID",
+                        column: x => x.EmployeeID,
+                        principalTable: "tbl_employees",
+                        principalColumn: "EmployeeId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_tbl_feedback_tbl_performanceevaluation_EvaluationID",
+                        column: x => x.EvaluationID,
+                        principalTable: "tbl_performanceevaluation",
+                        principalColumn: "EvaluationID",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tbl_activitysubmission",
                 columns: table => new
                 {
@@ -328,6 +488,16 @@ namespace TM_PE.Migrations
                 column: "EmployeeID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_tbl_appraisal_EmployeeID",
+                table: "tbl_appraisal",
+                column: "EmployeeID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_appraisal_EvaluationID",
+                table: "tbl_appraisal",
+                column: "EvaluationID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_tbl_employees_DepartmentId",
                 table: "tbl_employees",
                 column: "DepartmentId");
@@ -336,6 +506,32 @@ namespace TM_PE.Migrations
                 name: "IX_tbl_employees_Email",
                 table: "tbl_employees",
                 column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_evaluationresult_CriteriaID",
+                table: "tbl_evaluationresult",
+                column: "CriteriaID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_evaluationresult_EvaluationID",
+                table: "tbl_evaluationresult",
+                column: "EvaluationID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_feedback_EmployeeID",
+                table: "tbl_feedback",
+                column: "EmployeeID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_feedback_EvaluationID",
+                table: "tbl_feedback",
+                column: "EvaluationID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_fiberplan_PlanName",
+                table: "tbl_fiberplan",
+                column: "PlanName",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -379,6 +575,11 @@ namespace TM_PE.Migrations
                 column: "JobTicketID");
 
             migrationBuilder.CreateIndex(
+                name: "IX_tbl_performanceevaluation_EmployeeID",
+                table: "tbl_performanceevaluation",
+                column: "EmployeeID");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_tbl_taskactivity_AssignedEmployeeID",
                 table: "tbl_taskactivity",
                 column: "AssignedEmployeeID");
@@ -397,6 +598,18 @@ namespace TM_PE.Migrations
                 name: "IX_tbl_taskassignment_OfficeTaskID",
                 table: "tbl_taskassignment",
                 column: "OfficeTaskID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_useraccount_EmployeeID",
+                table: "tbl_useraccount",
+                column: "EmployeeID",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tbl_useraccount_Username",
+                table: "tbl_useraccount",
+                column: "Username",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -406,7 +619,16 @@ namespace TM_PE.Migrations
                 name: "tbl_activitysubmission");
 
             migrationBuilder.DropTable(
-                name: "tbl_criteria");
+                name: "tbl_appraisal");
+
+            migrationBuilder.DropTable(
+                name: "tbl_evaluationresult");
+
+            migrationBuilder.DropTable(
+                name: "tbl_feedback");
+
+            migrationBuilder.DropTable(
+                name: "tbl_fiberplan");
 
             migrationBuilder.DropTable(
                 name: "tbl_jobticketassignment");
@@ -418,7 +640,16 @@ namespace TM_PE.Migrations
                 name: "tbl_taskassignment");
 
             migrationBuilder.DropTable(
+                name: "tbl_useraccount");
+
+            migrationBuilder.DropTable(
                 name: "tbl_taskactivity");
+
+            migrationBuilder.DropTable(
+                name: "tbl_criteria");
+
+            migrationBuilder.DropTable(
+                name: "tbl_performanceevaluation");
 
             migrationBuilder.DropTable(
                 name: "tbl_jobticketreschedulehistory");
@@ -427,10 +658,10 @@ namespace TM_PE.Migrations
                 name: "tbl_jobticketsubmissionhistory");
 
             migrationBuilder.DropTable(
-                name: "tbl_employees");
+                name: "tbl_officetask");
 
             migrationBuilder.DropTable(
-                name: "tbl_officetask");
+                name: "tbl_employees");
 
             migrationBuilder.DropTable(
                 name: "tbl_jobticket");

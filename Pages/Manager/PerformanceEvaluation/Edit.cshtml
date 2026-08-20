@@ -29,28 +29,24 @@
                         <div class="form-text">The employee on an evaluation can't be changed — create a new evaluation instead.</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluator <span class="text-danger">*</span></label>
-                        <input asp-for="Evaluation.EvaluatorName" class="form-control" maxlength="100" />
-                        <span asp-validation-for="Evaluation.EvaluatorName" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluation Period <span class="text-danger">*</span></label>
-                        <input asp-for="Evaluation.EvaluationPeriod" class="form-control" maxlength="50" />
-                        <span asp-validation-for="Evaluation.EvaluationPeriod" class="text-danger"></span>
+                        <label class="form-label fw-semibold">Evaluator</label>
+                        <input class="form-control" value="@Model.Evaluation.EvaluatorName" disabled />
+                        <div class="form-text">Set automatically when this evaluation was created — not editable.</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Evaluation Date <span class="text-danger">*</span></label>
                         <input asp-for="Evaluation.EvaluationDate" type="date" class="form-control"
                                value="@Model.Evaluation.EvaluationDate.ToString("yyyy-MM-dd")" />
                         <span asp-validation-for="Evaluation.EvaluationDate" class="text-danger"></span>
+                        <div class="form-text">Also used as the appraisal date.</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluation Status</label>
+                        <label class="form-label fw-semibold">Status</label>
                         <select asp-for="Evaluation.EvaluationStatus" class="form-select">
                             <option value="Draft">Draft</option>
                             <option value="Finalized">Finalized</option>
                         </select>
-                        <div class="form-text">Setting this to Finalized locks the evaluation from further edits.</div>
+                        <div class="form-text">Setting this to Finalized locks the evaluation from further edits. Also the appraisal status.</div>
                     </div>
                 </div>
             </div>
@@ -101,9 +97,41 @@
                 }
             </div>
 
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">Appraisal Recommendation</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Primary Recommendation</label>
+                        <select asp-for="Evaluation.Recommendation" class="form-select">
+                            @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                            {
+                                <option value="@r">@TM_PE.Model.PerformanceEvaluation.RecommendationLabel(r)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.SalaryAdjustmentRecommendation" />
+                                <label class="form-check-label">Salary Adjustment</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.PromotionRecommendation" />
+                                <label class="form-check-label">Promotion</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.TrainingRecommendation" />
+                                <label class="form-check-label">Training</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card p-4">
-                <label class="form-label fw-semibold">General Remarks</label>
+                <label class="form-label fw-semibold">Remarks</label>
                 <textarea asp-for="Evaluation.GeneralRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
+                <div class="form-text">Covers both the evaluation and the appraisal decision — just one remarks field.</div>
             </div>
         </div>
 
@@ -117,7 +145,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Changes</button>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Evaluation and Appraisal</button>
         </div>
     </div>
 </form>

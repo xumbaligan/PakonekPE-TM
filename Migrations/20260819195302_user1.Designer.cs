@@ -12,7 +12,7 @@ using TM_PE.Data;
 namespace TM_PE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260816163553_user1")]
+    [Migration("20260819195302_user1")]
     partial class user1
     {
         /// <inheritdoc />
@@ -63,6 +63,61 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_activitysubmission");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.Appraisal", b =>
+                {
+                    b.Property<int>("AppraisalID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AppraisalID"));
+
+                    b.Property<DateTime>("AppraisalDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AppraisalStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EvaluationID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ManagerRemarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OverallRating")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("PromotionRecommendation")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Recommendation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("SalaryAdjustmentRecommendation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TrainingRecommendation")
+                        .HasColumnType("bit");
+
+                    b.HasKey("AppraisalID");
+
+                    b.HasIndex("EmployeeID");
+
+                    b.HasIndex("EvaluationID");
+
+                    b.ToTable("tbl_appraisal");
+                });
+
             modelBuilder.Entity("TM_PE.Model.Criteria", b =>
                 {
                     b.Property<int>("CriteriaId")
@@ -86,6 +141,9 @@ namespace TM_PE.Migrations
                     b.Property<string>("RoleType")
                         .IsRequired()
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("Weight")
+                        .HasColumnType("decimal(5,2)");
 
                     b.HasKey("CriteriaId");
 
@@ -163,6 +221,100 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_employees");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.EvaluationResult", b =>
+                {
+                    b.Property<int>("EvaluationResultID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvaluationResultID"));
+
+                    b.Property<int>("CriteriaID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EvaluationID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Score")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("EvaluationResultID");
+
+                    b.HasIndex("CriteriaID");
+
+                    b.HasIndex("EvaluationID");
+
+                    b.ToTable("tbl_evaluationresult");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.Feedback", b =>
+                {
+                    b.Property<int>("FeedbackID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FeedbackID"));
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("EvaluationID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FeedbackType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SubmittedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("FeedbackID");
+
+                    b.HasIndex("EmployeeID");
+
+                    b.HasIndex("EvaluationID");
+
+                    b.ToTable("tbl_feedback");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.FiberPlan", b =>
+                {
+                    b.Property<int>("FiberPlanID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FiberPlanID"));
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PlanName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("FiberPlanID");
+
+                    b.HasIndex("PlanName")
+                        .IsUnique();
+
+                    b.ToTable("tbl_fiberplan");
+                });
+
             modelBuilder.Entity("TM_PE.Model.JobTicket", b =>
                 {
                     b.Property<int>("JobTicketID")
@@ -186,8 +338,9 @@ namespace TM_PE.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int?>("FiberPlan")
-                        .HasColumnType("int");
+                    b.Property<string>("FiberPlan")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("JobType")
                         .IsRequired()
@@ -418,6 +571,56 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_officetask");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.PerformanceEvaluation", b =>
+                {
+                    b.Property<int>("EvaluationID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EvaluationID"));
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EvaluationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EvaluationPeriod")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EvaluationStatus")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("EvaluatorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("GeneralRemarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OverallRating")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("OverallScore")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("EvaluationID");
+
+                    b.HasIndex("EmployeeID");
+
+                    b.ToTable("tbl_performanceevaluation");
+                });
+
             modelBuilder.Entity("TM_PE.Model.TaskActivity", b =>
                 {
                     b.Property<int>("ActivityID")
@@ -484,6 +687,50 @@ namespace TM_PE.Migrations
                     b.ToTable("tbl_taskassignment");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.UserAccount", b =>
+                {
+                    b.Property<int>("UserAccountID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserAccountID"));
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmployeeID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastLogin")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordSalt")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("UserAccountID");
+
+                    b.HasIndex("EmployeeID")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("tbl_useraccount");
+                });
+
             modelBuilder.Entity("TM_PE.Model.ActivitySubmission", b =>
                 {
                     b.HasOne("TM_PE.Model.TaskActivity", "Activity")
@@ -503,6 +750,25 @@ namespace TM_PE.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.Appraisal", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.PerformanceEvaluation", "Evaluation")
+                        .WithMany()
+                        .HasForeignKey("EvaluationID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Evaluation");
+                });
+
             modelBuilder.Entity("TM_PE.Model.Employee", b =>
                 {
                     b.HasOne("TM_PE.Model.Department", "Department")
@@ -512,6 +778,43 @@ namespace TM_PE.Migrations
                         .IsRequired();
 
                     b.Navigation("Department");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.EvaluationResult", b =>
+                {
+                    b.HasOne("TM_PE.Model.Criteria", "Criteria")
+                        .WithMany()
+                        .HasForeignKey("CriteriaID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.PerformanceEvaluation", "PerformanceEvaluation")
+                        .WithMany("Results")
+                        .HasForeignKey("EvaluationID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Criteria");
+
+                    b.Navigation("PerformanceEvaluation");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.Feedback", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TM_PE.Model.PerformanceEvaluation", "Evaluation")
+                        .WithMany()
+                        .HasForeignKey("EvaluationID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Evaluation");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicketAssignment", b =>
@@ -588,6 +891,17 @@ namespace TM_PE.Migrations
                     b.Navigation("JobTicket");
                 });
 
+            modelBuilder.Entity("TM_PE.Model.PerformanceEvaluation", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("TM_PE.Model.TaskActivity", b =>
                 {
                     b.HasOne("TM_PE.Model.Employee", "AssignedEmployee")
@@ -622,6 +936,17 @@ namespace TM_PE.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("OfficeTask");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.UserAccount", b =>
+                {
+                    b.HasOne("TM_PE.Model.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Department", b =>
@@ -660,6 +985,11 @@ namespace TM_PE.Migrations
                     b.Navigation("Activities");
 
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("TM_PE.Model.PerformanceEvaluation", b =>
+                {
+                    b.Navigation("Results");
                 });
 #pragma warning restore 612, 618
         }

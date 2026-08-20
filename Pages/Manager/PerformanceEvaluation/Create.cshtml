@@ -12,8 +12,9 @@
 
 <div class="alert alert-info small">
     <i class="bi bi-info-circle"></i>
-    This evaluation is its own historical record. Completed jobs/tasks below are shown only as
-    supporting information — saving this form never changes any Job Ticket or Office Task.
+    This evaluation and its appraisal decision are saved together as one historical record.
+    Completed jobs/tasks below are shown only as supporting information — saving this form
+    never changes any Job Ticket or Office Task.
 </div>
 
 <form method="post" id="evalForm">
@@ -43,13 +44,9 @@
                         <span asp-validation-for="Evaluation.EmployeeID" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluator <span class="text-danger">*</span></label>
-                        <input asp-for="Evaluation.EvaluatorName" class="form-control" maxlength="100" />
-                        <span asp-validation-for="Evaluation.EvaluatorName" class="text-danger"></span>
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Evaluation Period <span class="text-danger">*</span></label>
-                        <input asp-for="Evaluation.EvaluationPeriod" class="form-control" placeholder="e.g. August 2026" maxlength="50" />
+                        <input asp-for="Evaluation.EvaluationPeriod" class="form-control" maxlength="50"
+                               placeholder="e.g. August 2026" />
                         <span asp-validation-for="Evaluation.EvaluationPeriod" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
@@ -57,14 +54,20 @@
                         <input asp-for="Evaluation.EvaluationDate" type="date" class="form-control"
                                value="@Model.Evaluation.EvaluationDate.ToString("yyyy-MM-dd")" />
                         <span asp-validation-for="Evaluation.EvaluationDate" class="text-danger"></span>
+                        <div class="form-text">Also used as the appraisal date.</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluation Status</label>
+                        <label class="form-label fw-semibold">Status</label>
                         <select asp-for="Evaluation.EvaluationStatus" class="form-select">
                             <option value="Draft">Draft</option>
                             <option value="Finalized">Finalized</option>
                         </select>
-                        <div class="form-text">Draft can still be edited later; Finalized locks the evaluation.</div>
+                        <div class="form-text">Draft can still be edited later; Finalized locks it. Also the appraisal status.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluator</label>
+                        <input class="form-control" value="@Model.CurrentManagerName" disabled />
+                        <div class="form-text">Automatically set to your manager account.</div>
                     </div>
                 </div>
             </div>
@@ -150,9 +153,42 @@
                 </table>
             </div>
 
+            @* ===================== Appraisal recommendation (after criteria) ===================== *@
+            <div class="card p-4 mb-4">
+                <h5 class="mb-3">Appraisal Recommendation</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Primary Recommendation</label>
+                        <select asp-for="Evaluation.Recommendation" class="form-select">
+                            @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                            {
+                                <option value="@r">@TM_PE.Model.PerformanceEvaluation.RecommendationLabel(r)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.SalaryAdjustmentRecommendation" />
+                                <label class="form-check-label">Salary Adjustment</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.PromotionRecommendation" />
+                                <label class="form-check-label">Promotion</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.TrainingRecommendation" />
+                                <label class="form-check-label">Training</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card p-4">
-                <label class="form-label fw-semibold">General Remarks</label>
+                <label class="form-label fw-semibold">Remarks</label>
                 <textarea asp-for="Evaluation.GeneralRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
+                <div class="form-text">Covers both the evaluation and the appraisal decision — just one remarks field.</div>
             </div>
         </div>
 
@@ -171,7 +207,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Evaluation</button>
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Evaluation and Appraisal</button>
         </div>
     </div>
 </form>
@@ -249,14 +285,14 @@
                     supportInfoBox.innerHTML = `
                         <div class="d-flex justify-content-between"><span>Completed job tickets</span><strong>${opt.dataset.completedTickets}</strong></div>
                         <div class="d-flex justify-content-between"><span>Active job tickets</span><strong>${opt.dataset.activeTickets}</strong></div>
-                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals, not limited to the evaluation period.</div>
+                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals.</div>
                     `;
                 } else {
                     supportInfoBox.innerHTML = `
                         <div class="d-flex justify-content-between"><span>Completed office tasks</span><strong>${opt.dataset.completedTasks}</strong></div>
                         <div class="d-flex justify-content-between"><span>Active office tasks</span><strong>${opt.dataset.activeTasks}</strong></div>
                         <div class="d-flex justify-content-between"><span>Average task score</span><strong>${opt.dataset.avgScore}</strong></div>
-                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals, not limited to the evaluation period.</div>
+                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals.</div>
                     `;
                 }
 

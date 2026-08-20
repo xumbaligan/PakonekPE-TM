@@ -1,0 +1,225 @@
+﻿@* @page
+@model TM_PE.Pages.Manager.PerformanceReport.IndexModel
+@{
+    ViewData["Title"] = "Performance Report";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+    <h2><i class="bi bi-file-earmark-text"></i> Performance Report</h2>
+    @if (Model.Report != null)
+    {
+        <button class="btn btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+    }
+</div>
+
+<div class="alert alert-info small no-print">
+    <i class="bi bi-info-circle"></i>
+    This report is assembled entirely from existing records — Employee, Job Tickets, Performance
+    Evaluation, Evaluation Results, Feedback, and Appraisal. Nothing here is entered manually.
+</div>
+
+<form method="get" class="row g-2 mb-4 no-print">
+    <div class="col-md-5">
+        <select class="form-select" name="EmployeeId" id="employeeSelect">
+            <option value="">Select an employee</option>
+            @foreach (var emp in Model.EmployeeList)
+            {
+                <option value="@emp.EmployeeId" data-employee-id="@emp.EmployeeId" selected="@(Model.EmployeeId == emp.EmployeeId)">
+                    @emp.FullName (@emp.RoleType)
+                </option>
+            }
+        </select>
+    </div>
+    <div class="col-md-5">
+        <select class="form-select" name="EvaluationId" id="evaluationSelect">
+            <option value="">Select an evaluation period</option>
+            @foreach (var ev in Model.EvaluationList)
+            {
+                <option value="@ev.EvaluationID" data-employee-id="@ev.EmployeeID" selected="@(Model.EvaluationId == ev.EvaluationID)">
+                    @ev.EvaluationPeriod — Evaluation #@ev.EvaluationID
+                </option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit"><i class="bi bi-file-earmark-text"></i> Generate</button>
+    </div>
+</form>
+
+@if (Model.EmployeeId.HasValue && Model.EvaluationId.HasValue && Model.Report == null)
+{
+    <div class="alert alert-warning">No evaluation found for that employee/period combination.</div>
+}
+
+@if (Model.Report != null)
+{
+    var r = Model.Report;
+    <div class="card p-4 report-sheet" style="max-width:800px">
+        <div class="text-center mb-4">
+            <h4 class="fw-bold mb-0">EMPLOYEE PERFORMANCE REPORT</h4>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="text-muted small">Employee</div>
+                <div class="fw-semibold fs-5">@r.Employee.FullName</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted small">Position</div>
+                <div class="fw-semibold">@r.Employee.RoleType</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted small">Department</div>
+                <div class="fw-semibold">@(r.Employee.Department?.DepartmentName ?? "—")</div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-muted small">Evaluation Period</div>
+                <div class="fw-semibold">@r.Evaluation.EvaluationPeriod</div>
+            </div>
+        </div>
+
+        <h6 class="text-uppercase text-muted border-bottom pb-1 mb-2">Workload Summary</h6>
+        <table class="table table-sm mb-2">
+            <tbody>
+                <tr><td>Jobs Assigned</td><td class="text-end fw-semibold">@r.Workload.Assigned</td></tr>
+                <tr><td>Jobs Completed</td><td class="text-end fw-semibold">@r.Workload.Completed</td></tr>
+                <tr><td>Jobs In Progress</td><td class="text-end fw-semibold">@r.Workload.InProgress</td></tr>
+                <tr><td>Jobs Overdue</td><td class="text-end fw-semibold">@r.Workload.Overdue</td></tr>
+                <tr class="border-top"><td class="fw-semibold">Completion Rate</td><td class="text-end fw-semibold">@r.Workload.CompletionRate.ToString("0")%</td></tr>
+            </tbody>
+        </table>
+
+        <h6 class="text-uppercase text-muted border-bottom pb-1 mb-2 mt-4">Performance Evaluation</h6>
+        @if (!r.Criteria.Any())
+        {
+            <div class="text-muted mb-2">No scored criteria on this evaluation.</div>
+        }
+        else
+        {
+            <table class="table table-sm mb-2">
+                <tbody>
+                    @foreach (var c in r.Criteria)
+                    {
+                        <tr><td>@c.Name</td><td class="text-end fw-semibold">@c.PercentAchieved.ToString("0")%</td></tr>
+                    }
+                </tbody>
+            </table>
+        }
+        <table class="table table-sm mb-2">
+            <tbody>
+                <tr class="border-top"><td class="fw-semibold">Overall Score</td><td class="text-end fw-semibold">@r.Evaluation.OverallScore.ToString("0.##")%</td></tr>
+                <tr><td class="fw-semibold">Overall Rating</td><td class="text-end fw-semibold">@r.Evaluation.OverallRating</td></tr>
+            </tbody>
+        </table>
+
+        <h6 class="text-uppercase text-muted border-bottom pb-1 mb-2 mt-4">Feedback</h6>
+        <div class="mb-2">
+            <div class="fw-semibold">Strengths:</div>
+            @if (!r.Strengths.Any())
+            {
+                <div class="text-muted">— None on file —</div>
+            }
+            else
+            {
+                <ul class="mb-0">
+                    @foreach (var s in r.Strengths)
+                    {
+                        <li>@s</li>
+                    }
+                </ul>
+            }
+        </div>
+        <div class="mb-2">
+            <div class="fw-semibold">Areas for Improvement:</div>
+            @if (!r.AreasForImprovement.Any())
+            {
+                <div class="text-muted">— None on file —</div>
+            }
+            else
+            {
+                <ul class="mb-0">
+                    @foreach (var s in r.AreasForImprovement)
+                    {
+                        <li>@s</li>
+                    }
+                </ul>
+            }
+        </div>
+        @if (r.GeneralFeedback.Any())
+        {
+            <div class="mb-2">
+                <div class="fw-semibold">General Notes:</div>
+                <ul class="mb-0">
+                    @foreach (var s in r.GeneralFeedback)
+                    {
+                        <li>@s</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <h6 class="text-uppercase text-muted border-bottom pb-1 mb-2 mt-4">Appraisal</h6>
+        @if (r.Appraisal == null)
+        {
+            <div class="text-muted">No appraisal has been made for this evaluation yet.</div>
+        }
+        else
+        {
+            <div class="mb-1"><span class="fw-semibold">Recommendation:</span> @r.Appraisal.CombinedRecommendationLabel()</div>
+            @if (!string.IsNullOrEmpty(r.Appraisal.ManagerRemarks))
+            {
+                <div><span class="fw-semibold">Manager Remarks:</span> @r.Appraisal.ManagerRemarks</div>
+            }
+        }
+    </div>
+}
+
+<style>
+    @@media print {
+        .no-print {
+            display: none !important;
+        }
+
+        nav, .sidebar {
+            display: none !important;
+        }
+
+        .report-sheet {
+            box-shadow: none !important;
+            border: none !important;
+            max-width: 100% !important;
+        }
+    }
+</style>
+
+@section Scripts {
+    <script>
+        (function () {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const evaluationSelect = document.getElementById('evaluationSelect');
+            const allEvalOptions = Array.from(evaluationSelect.options);
+
+            function filterEvaluations() {
+                const empId = employeeSelect.value;
+                const currentValue = evaluationSelect.value;
+                evaluationSelect.innerHTML = '';
+                evaluationSelect.appendChild(allEvalOptions[0].cloneNode(true)); // placeholder
+
+                allEvalOptions.slice(1).forEach(opt => {
+                    if (!empId || opt.dataset.employeeId === empId) {
+                        evaluationSelect.appendChild(opt.cloneNode(true));
+                    }
+                });
+
+                if (Array.from(evaluationSelect.options).some(o => o.value === currentValue)) {
+                    evaluationSelect.value = currentValue;
+                }
+            }
+
+            employeeSelect.addEventListener('change', filterEvaluations);
+            filterEvaluations();
+        })();
+    </script>
+}
+ *@

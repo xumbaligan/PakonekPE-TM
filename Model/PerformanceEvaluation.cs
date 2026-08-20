@@ -13,6 +13,11 @@ namespace TM_PE.Model
     // using completed Job Tickets / Office Tasks and the Workload Monitoring
     // statistics as *supporting information* only — creating, editing, or
     // finalizing an evaluation never writes back to JobTicket or OfficeTask.
+    //
+    // The Appraisal decision now lives directly on the evaluation instead of
+    // being a separate module: there is one Evaluation Date (also the
+    // appraisal date), one Status (also the appraisal status), and one
+    // Remarks field — Performance Evaluation + Appraisal are saved together.
     [Table("tbl_performanceevaluation")]
     public class PerformanceEvaluation
     {
@@ -25,7 +30,9 @@ namespace TM_PE.Model
         [ForeignKey(nameof(EmployeeID))]
         public Employee? Employee { get; set; }
 
-        [Required(ErrorMessage = "Please enter who is conducting this evaluation.")]
+        // Never entered by hand — set automatically to the logged-in manager
+        // at the time the evaluation is created (see Create.cshtml.cs).
+        [Required]
         [StringLength(100)]
         public string EvaluatorName { get; set; } = "Manager";
 
@@ -55,10 +62,49 @@ namespace TM_PE.Model
         [Column(TypeName = "nvarchar(20)")]
         public EvaluationStatus EvaluationStatus { get; set; } = EvaluationStatus.Draft;
 
+        // ---- Appraisal (management decision), merged in from the former
+        // standalone Appraisal module ----
+        [Column(TypeName = "nvarchar(50)")]
+        public AppraisalRecommendation Recommendation { get; set; } = AppraisalRecommendation.NoAction;
+
+        public bool SalaryAdjustmentRecommendation { get; set; }
+        public bool PromotionRecommendation { get; set; }
+        public bool TrainingRecommendation { get; set; }
+
         public DateTime DateCreated { get; set; } = DateTime.Now;
 
         // Performance Evaluation -> Evaluation Results -> Criteria
         public ICollection<EvaluationResult> Results { get; set; } = new List<EvaluationResult>();
+
+        // Builds a human-readable combined label like "Training + Recognition"
+        // by pairing the primary Recommendation with any supplementary flags
+        // that aren't already implied by it.
+        public string CombinedRecommendationLabel()
+        {
+            var parts = new List<string>();
+
+            if (TrainingRecommendation && Recommendation != AppraisalRecommendation.TrainingRequired)
+                parts.Add("Training");
+            if (PromotionRecommendation && Recommendation != AppraisalRecommendation.PromotionRecommended)
+                parts.Add("Promotion");
+            if (SalaryAdjustmentRecommendation && Recommendation != AppraisalRecommendation.SalaryAdjustmentRecommended)
+                parts.Add("Salary Adjustment");
+
+            parts.Add(RecommendationLabel(Recommendation));
+
+            return string.Join(" + ", parts);
+        }
+
+        public static string RecommendationLabel(AppraisalRecommendation r) => r switch
+        {
+            AppraisalRecommendation.NoAction => "No Action",
+            AppraisalRecommendation.Recognition => "Recognition",
+            AppraisalRecommendation.TrainingRequired => "Training Required",
+            AppraisalRecommendation.PerformanceImprovementPlan => "Performance Improvement Plan",
+            AppraisalRecommendation.PromotionRecommended => "Promotion Recommended",
+            AppraisalRecommendation.SalaryAdjustmentRecommended => "Salary Adjustment Recommended",
+            _ => r.ToString()
+        };
     }
 
     // One scored criterion within a Performance Evaluation.

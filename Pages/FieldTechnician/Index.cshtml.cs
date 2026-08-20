@@ -27,14 +27,14 @@ namespace TM_PE.Pages.FieldTechnician
             var employeeId = HttpContext.Session.GetInt32("CurrentFieldTechnicianId");
             if (employeeId == null)
             {
-                return RedirectToPage("./Select");
+                return RedirectToPage("/Login");
             }
 
             var employee = await _context.Employees.FindAsync(employeeId.Value);
             if (employee == null || employee.RoleType != RoleType.FieldTechnician)
             {
                 HttpContext.Session.Remove("CurrentFieldTechnicianId");
-                return RedirectToPage("./Select");
+                return RedirectToPage("/Login");
             }
 
             CurrentEmployee = employee;
@@ -59,8 +59,8 @@ namespace TM_PE.Pages.FieldTechnician
 
         public IActionResult OnPostSwitchEmployee()
         {
-            HttpContext.Session.Remove("CurrentFieldTechnicianId");
-            return RedirectToPage("./Select");
+            HttpContext.Session.Clear();
+            return RedirectToPage("/Login");
         }
     }
 }

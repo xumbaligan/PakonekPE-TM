@@ -27,7 +27,7 @@ namespace TM_PE.Data
         public DbSet<PerformanceEvaluation> PerformanceEvaluations => Set<PerformanceEvaluation>();
         public DbSet<EvaluationResult> EvaluationResults => Set<EvaluationResult>();
         public DbSet<Feedback> Feedbacks => Set<Feedback>();
-        public DbSet<Appraisal> Appraisals => Set<Appraisal>();
+        public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
         protected override void OnModelCreating(ModelBuilder b)
         {
@@ -52,6 +52,10 @@ namespace TM_PE.Data
 
             b.Entity<PerformanceEvaluation>()
                 .Property(e => e.EvaluationStatus)
+                .HasConversion<string>();
+
+            b.Entity<PerformanceEvaluation>()
+                .Property(e => e.Recommendation)
                 .HasConversion<string>();
 
             // An evaluation is a historical record: if the employee it was
@@ -97,26 +101,19 @@ namespace TM_PE.Data
                 .HasForeignKey(f => f.EvaluationID)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            b.Entity<Appraisal>()
-                .Property(a => a.Recommendation)
-                .HasConversion<string>();
+            // One login account per Employee, and usernames are unique/fixed.
+            b.Entity<UserAccount>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
 
-            b.Entity<Appraisal>()
-                .Property(a => a.AppraisalStatus)
-                .HasConversion<string>();
+            b.Entity<UserAccount>()
+                .HasIndex(u => u.EmployeeID)
+                .IsUnique();
 
-            // Appraisal always follows an Evaluation + Feedback, so the link to
-            // the Evaluation is required and can't be removed out from under it.
-            b.Entity<Appraisal>()
-                .HasOne(a => a.Employee)
+            b.Entity<UserAccount>()
+                .HasOne(u => u.Employee)
                 .WithMany()
-                .HasForeignKey(a => a.EmployeeID)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            b.Entity<Appraisal>()
-                .HasOne(a => a.Evaluation)
-                .WithMany()
-                .HasForeignKey(a => a.EvaluationID)
+                .HasForeignKey(u => u.EmployeeID)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Let the database set CreatedAt automatically

@@ -14,15 +14,33 @@
             <h4 class="mb-4"><i class="bi bi-graph-up-arrow"></i> Pakonek</h4>
             <nav class="nav flex-column">
                 <a class="nav-link text-white" asp-page="/Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                <a class="nav-link text-white" asp-page="/Manager/Departments/Index"><i class="bi bi-building"></i> Departments</a>
-                <a class="nav-link text-white" asp-page="/Manager/Employees/Index"><i class="bi bi-people"></i> Employees</a>
-                <a class="nav-link text-white" asp-page="/Manager/Criteria/Index"><i class="bi bi-list-check"></i> Criteria</a>
-                <a class="nav-link text-white" asp-page="/Manager/OfficeTask/Index"><i class="bi bi-card-checklist"></i> Office Tasks</a>
+            </nav>
+
+            <div class="nav-section-label">Work Management</div>
+            <nav class="nav flex-column">
                 <a class="nav-link text-white" asp-page="/Manager/JobTickets/Index"><i class="bi bi-tools"></i> Job Tickets</a>
+                <a class="nav-link text-white" asp-page="/Manager/OfficeTask/Index"><i class="bi bi-card-checklist"></i> Office Tasks</a>
                 <a class="nav-link text-white" asp-page="/Manager/WorkLoadMonitoring/Index"><i class="bi bi-bar-chart-line"></i> Workload Monitoring</a>
+            </nav>
+
+            <div class="nav-section-label">Performance</div>
+            <nav class="nav flex-column">
                 <a class="nav-link text-white" asp-page="/Manager/PerformanceEvaluation/Index"><i class="bi bi-clipboard-data"></i> Performance Evaluation</a>
-                <a class="nav-link text-white" asp-page="/Manager/Feedback/Index"><i class="bi bi-chat-square-text"></i> Feedback</a>
-                <a class="nav-link text-white" asp-page="/Manager/Appraisal/Index"><i class="bi bi-award"></i> Appraisal Records</a>
+                @* <a class="nav-link text-white" asp-page="/Manager/Feedback/Index"><i class="bi bi-chat-square-text"></i> Feedback</a>
+                <a class="nav-link text-white" asp-page="/Manager/Appraisal/Index"><i class="bi bi-award"></i> Appraisal Records</a> *@
+                <a class="nav-link text-white" asp-page="/Manager/PerformanceReport/Index"><i class="bi bi-file-earmark-text"></i> Performance Reports</a>
+            </nav>
+
+            <div class="nav-section-label">Management</div>
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Manager/Employees/Index"><i class="bi bi-people"></i> Employees</a>
+                <a class="nav-link text-white" asp-page="/Manager/Departments/Index"><i class="bi bi-building"></i> Departments</a>
+                <a class="nav-link text-white" asp-page="/Manager/Criteria/Index"><i class="bi bi-list-check"></i> Criteria</a>
+            </nav>
+
+            <hr class="text-white-50" />
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
             </nav>
         </aside>
         <main class="flex-grow-1 p-4 bg-light min-vh-100">

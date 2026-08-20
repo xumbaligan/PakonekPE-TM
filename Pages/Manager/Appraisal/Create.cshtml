@@ -1,4 +1,4 @@
-﻿@page
+﻿@* @page
 @model TM_PE.Pages.Manager.Appraisal.CreateModel
 @{
     ViewData["Title"] = "New Appraisal";
@@ -23,12 +23,21 @@
                 <h5 class="mb-3">Appraisal Details</h5>
                 <div class="row g-3">
                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Role Type</label>
+                        <select id="roleTypeFilter" class="form-select">
+                            <option value="">All Role Types</option>
+                            <option value="FieldTechnician">Field Technician</option>
+                            <option value="OfficeStaff">Office Staff</option>
+                        </select>
+                        <div class="form-text">Narrows the Employee list below.</div>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
                         <select asp-for="Item.EmployeeID" id="employeeSelect" class="form-select">
                             <option value="">Select an employee</option>
                             @foreach (var emp in Model.EmployeeList)
                             {
-                                <option value="@emp.EmployeeId">@emp.FullName (@emp.RoleType)</option>
+                                <option value="@emp.EmployeeId" data-roletype="@emp.RoleType">@emp.FullName (@emp.RoleType)</option>
                             }
                         </select>
                         <span asp-validation-for="Item.EmployeeID" class="text-danger"></span>
@@ -116,9 +125,34 @@
     <script>
         (function () {
             const employeeSelect = document.getElementById('employeeSelect');
+            const roleTypeFilter = document.getElementById('roleTypeFilter');
             const evaluationSelect = document.getElementById('evaluationSelect');
             const ratingPreview = document.getElementById('ratingPreview');
+            const allEmployeeOptions = Array.from(employeeSelect.options);
             const allEvalOptions = Array.from(evaluationSelect.options);
+
+            // Rebuilds the Employee dropdown, keeping only employees whose
+            // RoleType matches the filter, then re-runs the existing
+            // employee -> evaluation cascade so the Evaluation list stays in sync.
+            function filterEmployeesByRole() {
+                const role = roleTypeFilter.value;
+                const currentValue = employeeSelect.value;
+
+                employeeSelect.innerHTML = '';
+                employeeSelect.appendChild(allEmployeeOptions[0].cloneNode(true)); // placeholder
+
+                allEmployeeOptions.slice(1).forEach(opt => {
+                    if (!role || opt.dataset.roletype === role) {
+                        employeeSelect.appendChild(opt.cloneNode(true));
+                    }
+                });
+
+                const stillPresent = Array.from(employeeSelect.options).some(o => o.value === currentValue);
+                employeeSelect.value = stillPresent ? currentValue : '';
+                filterEvaluations();
+            }
+
+            roleTypeFilter.addEventListener('change', filterEmployeesByRole);
 
             function filterEvaluations() {
                 const empId = employeeSelect.value;
@@ -144,3 +178,4 @@
         })();
     </script>
 }
+ *@

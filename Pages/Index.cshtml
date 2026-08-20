@@ -60,3 +60,109 @@
     </div>
 </div>
 
+<h5 class="mb-3">Workload — Job Tickets</h5>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Total Active</div><h3 class="mb-0">@Model.TotalActiveJobs</h3>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Pending</div><h3 class="mb-0">@Model.PendingJobs</h3>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">In Progress</div><h3 class="mb-0">@Model.InProgressJobs</h3>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Completed</div><h3 class="mb-0 text-success">@Model.CompletedJobs</h3>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Overdue</div><h3 class="mb-0 text-danger">@Model.OverdueJobs</h3>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-3">Job Performance</h5>
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Completion Rate</div><h3 class="mb-0">@Model.JobCompletionRate.ToString("0")%</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">On-Time Completion</div><h3 class="mb-0">@Model.OnTimeCompletionRate.ToString("0")%</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Rescheduled Jobs</div><h3 class="mb-0">@Model.RescheduledJobsCount</h3>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card card-stat p-3 text-center">
+            <div class="text-muted small">Cancelled Jobs</div><h3 class="mb-0">@Model.CancelledJobsCount</h3>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-3">Employee Performance</h5>
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <div class="text-muted small">Average Performance Score</div>
+            <h2 class="mb-1">@Model.AveragePerformanceScore.ToString("0.#")</h2>
+            <div class="text-muted small mb-2">out of 100, across latest evaluations</div>
+            <div class="d-flex justify-content-between small">
+                <span>Office Staff avg: <strong>@Model.AverageOfficeStaffScore.ToString("0.#")</strong></span>
+                <span>Field Technician avg: <strong>@Model.AverageFieldTechnicianScore.ToString("0.#")</strong></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <div class="text-muted small mb-2">Highest Performing Employees</div>
+            @if (!Model.TopPerformers.Any())
+            {
+                <div class="text-muted small">No evaluations recorded yet.</div>
+            }
+            else
+            {
+                @foreach (var p in Model.TopPerformers)
+                {
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                        <span>@p.Name</span>
+                        <span class="fw-semibold">@p.Score.ToString("0.#") — @p.Rating</span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <div class="text-muted small mb-2">Employees Requiring Improvement</div>
+            @if (!Model.NeedsImprovement.Any())
+            {
+                <div class="text-muted small">None right now.</div>
+            }
+            else
+            {
+                @foreach (var p in Model.NeedsImprovement)
+                {
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                        <span>@p.Name</span>
+                        <span class="fw-semibold text-danger">@p.Score.ToString("0.#") — @p.Rating</span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+

@@ -6,10 +6,10 @@ using TM_PE.Model;
 
 namespace TM_PE.Pages.Manager.PerformanceEvaluation
 {
-    // Performance Evaluation and Appraisal are saved together here — there is
-    // no separate Appraisal page anymore. One Evaluation Date doubles as the
-    // appraisal date, one Status doubles as the appraisal status, and one
-    // Remarks field covers both.
+    // Performance Evaluation and its appraisal recommendations are saved
+    // together here. One Evaluation Date doubles as the appraisal date, one
+    // Status doubles as the appraisal status, and the manager rates each
+    // criterion with stars rather than typing raw points.
     public class CreateModel : PageModel
     {
         private readonly AppDbContext _context;
@@ -22,38 +22,59 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             EvaluationStatus = EvaluationStatus.Draft
         };
 
+        // Posted using the "Results.Index" hidden-input form of collection
+        // binding rather than plain 0..n indices, because only the criteria
+        // block for the selected role type is enabled - plain indices would
+        // break the moment the posted ones weren't contiguous from zero.
         [BindProperty]
         public List<ResultInput> Results { get; set; } = new();
 
-        // Only Field Technicians / Office Staff can be evaluated — Admin and
+        // Same technique: recommendation rows are added/removed client-side, so
+        // their indices are stable keys instead of positions.
+        [BindProperty]
+        public List<RecommendationInput> Recommendations { get; set; } = new();
+
+        // Only Field Technicians / Office Staff can be evaluated - Admin and
         // Manager accounts are excluded from the picker.
         public List<Employee> EmployeeList { get; set; } = new();
 
         // Criteria are pulled straight from the database (Manager > Criteria),
-        // never hardcoded here — each RoleType gets its own weighted set.
+        // never hardcoded here - each RoleType gets its own weighted set.
         public List<TM_PE.Model.Criteria> FieldTechnicianCriteria { get; set; } = new();
         public List<TM_PE.Model.Criteria> OfficeStaffCriteria { get; set; } = new();
 
-        // Read-only, supporting context only — nothing here is written back to
-        // JobTicket/OfficeTask by this page.
-        public Dictionary<int, EmployeeSupportInfo> SupportInfo { get; set; } = new();
+        // Completed / on-time / rescheduled / cancelled counts shown at the top
+        // of the page, so the manager can see actual performance while rating.
+        public Dictionary<int, EmployeePerformanceStats> Stats { get; set; } = new();
 
         public string CurrentManagerName { get; set; } = "Manager";
+
+        // Merges the criteria list with anything already posted, so a
+        // validation failure doesn't wipe out the stars/feedback already
+        // entered.
+        public List<CriteriaStarRow> RowsFor(List<TM_PE.Model.Criteria> criteria) =>
+            criteria.Select(c =>
+            {
+                var posted = Results.FirstOrDefault(r => r.CriteriaID == c.CriteriaId);
+                return new CriteriaStarRow
+                {
+                    Criteria = c,
+                    StarRating = posted?.StarRating ?? 0,
+                    Feedback = posted?.Feedback
+                };
+            }).ToList();
 
         public class ResultInput
         {
             public int CriteriaID { get; set; }
-            public decimal Score { get; set; }
-            public string? Remarks { get; set; }
+            public int StarRating { get; set; }
+            public string? Feedback { get; set; }
         }
 
-        public class EmployeeSupportInfo
+        public class RecommendationInput
         {
-            public int CompletedJobTickets { get; set; }
-            public int ActiveJobTickets { get; set; }
-            public int CompletedOfficeTasks { get; set; }
-            public int ActiveOfficeTasks { get; set; }
-            public decimal AverageTaskScore { get; set; }
+            public AppraisalRecommendation Recommendation { get; set; }
+            public string? Details { get; set; }
         }
 
         public async Task OnGetAsync()
@@ -61,7 +82,11 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             await LoadReferenceDataAsync();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public Task<IActionResult> OnPostSaveDraftAsync() => SaveAsync(EvaluationStatus.Draft);
+
+        public Task<IActionResult> OnPostFinalizeAsync() => SaveAsync(EvaluationStatus.Finalized);
+
+        private async Task<IActionResult> SaveAsync(EvaluationStatus status)
         {
             var employee = await _context.Employees.FindAsync(Evaluation.EmployeeID);
             if (employee == null || employee.RoleType is RoleType.Admin or RoleType.Manager)
@@ -74,6 +99,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.OverallScore");
             ModelState.Remove("Evaluation.OverallRating");
             ModelState.Remove("Evaluation.EvaluatorName");
+            ModelState.Remove("Evaluation.EvaluationStatus");
 
             if (!ModelState.IsValid || employee == null)
             {
@@ -82,8 +108,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             }
 
             // Only accept scores for criteria that actually belong to this
-            // employee's role type and are still active — never trust the
-            // posted CriteriaID list blindly.
+            // employee's role type and are still active - never trust the
+            // posted criteria list blindly.
             var allowedCriteria = await _context.Criteria
                 .Where(c => c.IsActive && c.RoleType == employee.RoleType)
                 .ToListAsync();
@@ -93,16 +119,13 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             {
                 EmployeeID = employee.EmployeeId,
                 // The evaluator is always the manager who's currently logged
-                // in — never a free-text field a person could misattribute.
+                // in - never a free-text field a person could misattribute.
                 EvaluatorName = GetCurrentManagerName(),
                 EvaluationDate = Evaluation.EvaluationDate,
                 EvaluationPeriod = Evaluation.EvaluationPeriod.Trim(),
-                GeneralRemarks = string.IsNullOrWhiteSpace(Evaluation.GeneralRemarks) ? null : Evaluation.GeneralRemarks.Trim(),
-                EvaluationStatus = Evaluation.EvaluationStatus,
-                Recommendation = Evaluation.Recommendation,
-                SalaryAdjustmentRecommendation = Evaluation.SalaryAdjustmentRecommendation,
-                PromotionRecommendation = Evaluation.PromotionRecommendation,
-                TrainingRecommendation = Evaluation.TrainingRecommendation,
+                GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim(),
+                // Status comes from which button was pressed, not a dropdown.
+                EvaluationStatus = status,
                 DateCreated = DateTime.Now
             };
 
@@ -111,16 +134,28 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             {
                 if (!allowedIds.TryGetValue(r.CriteriaID, out var criteria)) continue;
 
-                // Clamp server-side: a score can never exceed that criterion's
-                // configured weight, regardless of what the client sent.
-                var score = Math.Clamp(r.Score, 0, criteria.Weight);
+                // Clamp server-side: stars can only ever be 0-5, and the points
+                // they translate into are capped by that criterion's weight.
+                var stars = Math.Clamp(r.StarRating, 0, EvaluationScoring.MaxStars);
+                var score = EvaluationScoring.ScoreFor(stars, criteria.Weight);
                 overallScore += score;
 
                 evaluation.Results.Add(new EvaluationResult
                 {
                     CriteriaID = criteria.CriteriaId,
+                    StarRating = stars,
                     Score = score,
-                    Remarks = string.IsNullOrWhiteSpace(r.Remarks) ? null : r.Remarks.Trim()
+                    Feedback = string.IsNullOrWhiteSpace(r.Feedback) ? null : r.Feedback.Trim()
+                });
+            }
+
+            foreach (var rec in Recommendations)
+            {
+                evaluation.Recommendations.Add(new EvaluationRecommendation
+                {
+                    Recommendation = rec.Recommendation,
+                    Details = string.IsNullOrWhiteSpace(rec.Details) ? null : rec.Details.Trim(),
+                    DateCreated = DateTime.Now
                 });
             }
 
@@ -155,38 +190,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .OrderByDescending(c => c.Weight)
                 .ToListAsync();
 
-            await BuildSupportInfoAsync();
-        }
-
-        private async Task BuildSupportInfoAsync()
-        {
-            SupportInfo = new Dictionary<int, EmployeeSupportInfo>();
-
-            var ticketAssignments = await _context.JobTicketAssignments
-                .Include(a => a.JobTicket)
-                .ToListAsync();
-
-            var taskAssignments = await _context.TaskAssignments
-                .Include(a => a.OfficeTask)
-                .ToListAsync();
-
-            foreach (var emp in EmployeeList)
-            {
-                var info = new EmployeeSupportInfo();
-
-                var myTickets = ticketAssignments.Where(a => a.EmployeeID == emp.EmployeeId && a.JobTicket != null).ToList();
-                info.CompletedJobTickets = myTickets.Count(a =>
-                    a.JobTicket!.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed);
-                info.ActiveJobTickets = myTickets.Count(a =>
-                    a.JobTicket!.Status is JobTicketStatuses.Pending or JobTicketStatuses.InProgress or JobTicketStatuses.Overdue);
-
-                var myTasks = taskAssignments.Where(a => a.EmployeeID == emp.EmployeeId && a.OfficeTask != null).ToList();
-                info.CompletedOfficeTasks = myTasks.Count(a => a.OfficeTask!.Status == "Completed");
-                info.ActiveOfficeTasks = myTasks.Count(a => a.OfficeTask!.Status is "Pending" or "In Progress" or "Overdue");
-                info.AverageTaskScore = myTasks.Any() ? Math.Round(myTasks.Average(a => a.OfficeTask!.Score), 1) : 0;
-
-                SupportInfo[emp.EmployeeId] = info;
-            }
+            Stats = await EmployeePerformanceStatsBuilder.BuildAsync(
+                _context, EmployeeList.Select(e => e.EmployeeId));
         }
     }
 }

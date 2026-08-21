@@ -9,15 +9,17 @@ namespace TM_PE.Model
         Finalized
     }
 
-    // A Performance Evaluation is its own historical record. It is filled out
-    // using completed Job Tickets / Office Tasks and the Workload Monitoring
-    // statistics as *supporting information* only — creating, editing, or
-    // finalizing an evaluation never writes back to JobTicket or OfficeTask.
+    // A Performance Evaluation is its own historical record. Creating, editing,
+    // or finalizing an evaluation never writes back to JobTicket or OfficeTask.
     //
-    // The Appraisal decision now lives directly on the evaluation instead of
-    // being a separate module: there is one Evaluation Date (also the
-    // appraisal date), one Status (also the appraisal status), and one
-    // Remarks field — Performance Evaluation + Appraisal are saved together.
+    // Scoring is star-based: the manager awards 1-5 stars per criterion and the
+    // system converts that into weighted points (see EvaluationScoring), so the
+    // Overall Score still lands out of 100.
+    //
+    // The appraisal decision lives directly on the evaluation instead of being a
+    // separate module: one Evaluation Date (also the appraisal date), one Status
+    // (also the appraisal status), one Feedback field, and a list of
+    // manager-added Recommendations.
     [Table("tbl_performanceevaluation")]
     public class PerformanceEvaluation
     {
@@ -30,14 +32,14 @@ namespace TM_PE.Model
         [ForeignKey(nameof(EmployeeID))]
         public Employee? Employee { get; set; }
 
-        // Never entered by hand — set automatically to the logged-in manager
+        // Never entered by hand - set automatically to the logged-in manager
         // at the time the evaluation is created (see Create.cshtml.cs).
         [Required]
         [StringLength(100)]
         public string EvaluatorName { get; set; } = "Manager";
 
         // Free text on purpose (e.g. "August 2026") to match how the business
-        // actually names an evaluation period — not every period lines up with
+        // actually names an evaluation period - not every period lines up with
         // a calendar month.
         [Required(ErrorMessage = "Please enter the evaluation period.")]
         [StringLength(50)]
@@ -56,55 +58,39 @@ namespace TM_PE.Model
         [StringLength(50)]
         public string OverallRating { get; set; } = string.Empty;
 
+        // Renamed from GeneralRemarks - the manager's written feedback for this
+        // evaluation period.
         [StringLength(1000)]
-        public string? GeneralRemarks { get; set; }
+        public string? GeneralFeedback { get; set; }
 
         [Column(TypeName = "nvarchar(20)")]
         public EvaluationStatus EvaluationStatus { get; set; } = EvaluationStatus.Draft;
-
-        // ---- Appraisal (management decision), merged in from the former
-        // standalone Appraisal module ----
-        [Column(TypeName = "nvarchar(50)")]
-        public AppraisalRecommendation Recommendation { get; set; } = AppraisalRecommendation.NoAction;
-
-        public bool SalaryAdjustmentRecommendation { get; set; }
-        public bool PromotionRecommendation { get; set; }
-        public bool TrainingRecommendation { get; set; }
 
         public DateTime DateCreated { get; set; } = DateTime.Now;
 
         // Performance Evaluation -> Evaluation Results -> Criteria
         public ICollection<EvaluationResult> Results { get; set; } = new List<EvaluationResult>();
 
-        // Builds a human-readable combined label like "Training + Recognition"
-        // by pairing the primary Recommendation with any supplementary flags
-        // that aren't already implied by it.
-        public string CombinedRecommendationLabel()
+        // Manager-added appraisal recommendations. Replaces the old fixed
+        // Salary Adjustment / Promotion / Training checkboxes: the manager now
+        // adds as many (or as few) recommendations as the situation calls for.
+        public ICollection<EvaluationRecommendation> Recommendations { get; set; } = new List<EvaluationRecommendation>();
+
+        // Overall Score expressed back as stars out of 5, for star displays.
+        [NotMapped]
+        public decimal OverallStars => EvaluationScoring.StarsFor(OverallScore);
+
+        [NotMapped]
+        public bool IsFinalized => EvaluationStatus == EvaluationStatus.Finalized;
+
+        // Short one-line summary used in tables and modals.
+        public string RecommendationSummary()
         {
-            var parts = new List<string>();
-
-            if (TrainingRecommendation && Recommendation != AppraisalRecommendation.TrainingRequired)
-                parts.Add("Training");
-            if (PromotionRecommendation && Recommendation != AppraisalRecommendation.PromotionRecommended)
-                parts.Add("Promotion");
-            if (SalaryAdjustmentRecommendation && Recommendation != AppraisalRecommendation.SalaryAdjustmentRecommended)
-                parts.Add("Salary Adjustment");
-
-            parts.Add(RecommendationLabel(Recommendation));
-
-            return string.Join(" + ", parts);
+            if (Recommendations == null || Recommendations.Count == 0) return "No recommendation";
+            return string.Join(", ", Recommendations
+                .OrderBy(r => r.EvaluationRecommendationID)
+                .Select(r => EvaluationRecommendation.RecommendationLabel(r.Recommendation)));
         }
-
-        public static string RecommendationLabel(AppraisalRecommendation r) => r switch
-        {
-            AppraisalRecommendation.NoAction => "No Action",
-            AppraisalRecommendation.Recognition => "Recognition",
-            AppraisalRecommendation.TrainingRequired => "Training Required",
-            AppraisalRecommendation.PerformanceImprovementPlan => "Performance Improvement Plan",
-            AppraisalRecommendation.PromotionRecommended => "Promotion Recommended",
-            AppraisalRecommendation.SalaryAdjustmentRecommended => "Salary Adjustment Recommended",
-            _ => r.ToString()
-        };
     }
 
     // One scored criterion within a Performance Evaluation.
@@ -126,21 +112,41 @@ namespace TM_PE.Model
         [ForeignKey(nameof(CriteriaID))]
         public Criteria? Criteria { get; set; }
 
-        // Points earned for this criterion. Capped at Criteria.Weight, which
-        // doubles as this criterion's max points (weights for a RoleType add
-        // up to 100, so the Overall Score ends up out of 100 automatically).
+        // What the manager actually clicked: 0-5 stars for this criterion.
+        [Range(0, EvaluationScoring.MaxStars)]
+        public int StarRating { get; set; }
+
+        // Points earned for this criterion, derived from StarRating and the
+        // criterion's Weight (weights for a RoleType add up to 100, so the
+        // Overall Score ends up out of 100 automatically). Stored rather than
+        // recomputed so past evaluations stay stable if a weight changes.
         [Range(0, 100)]
         [Column(TypeName = "decimal(5,2)")]
         public decimal Score { get; set; }
 
+        // Renamed from Remarks.
         [StringLength(500)]
-        public string? Remarks { get; set; }
+        public string? Feedback { get; set; }
     }
 
-    // Single place that turns a weighted Overall Score into a rating label —
-    // configured here once instead of hardcoded inside a Razor page.
+    // Single place that turns stars into points and a weighted Overall Score
+    // into a rating label - configured here once instead of hardcoded inside a
+    // Razor page.
     public static class EvaluationScoring
     {
+        public const int MaxStars = 5;
+
+        // A criterion worth 25% rated 4/5 stars earns 20 of its 25 points.
+        public static decimal ScoreFor(int stars, decimal weight)
+        {
+            var clamped = Math.Clamp(stars, 0, MaxStars);
+            return Math.Round(weight * clamped / MaxStars, 2, MidpointRounding.AwayFromZero);
+        }
+
+        // Turns an out-of-100 score back into stars out of 5.
+        public static decimal StarsFor(decimal scoreOutOf100) =>
+            Math.Round(Math.Clamp(scoreOutOf100, 0, 100) / 20m, 2, MidpointRounding.AwayFromZero);
+
         // Highest threshold first; the first band the score meets or exceeds wins.
         public static readonly (decimal MinScore, string Rating)[] Bands =
         {
@@ -159,5 +165,29 @@ namespace TM_PE.Model
             }
             return "Poor";
         }
+
+        // Bootstrap colour suffix used for rating badges across the pages.
+        public static string RatingBadgeClass(string rating) => rating switch
+        {
+            "Excellent" => "success",
+            "Very Good" => "primary",
+            "Good" => "info",
+            "Needs Improvement" => "warning",
+            "Poor" => "danger",
+            _ => "secondary"
+        };
+    }
+}
+
+namespace TM_PE.Model
+{
+    // View-model row used by the shared _CriteriaStarRows partial, so the
+    // Create and Edit pages render an identical star-rating table (Create just
+    // starts every row at zero stars).
+    public class CriteriaStarRow
+    {
+        public Criteria Criteria { get; set; } = new();
+        public int StarRating { get; set; }
+        public string? Feedback { get; set; }
     }
 }

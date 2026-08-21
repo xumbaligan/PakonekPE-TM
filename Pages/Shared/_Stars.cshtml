@@ -1,0 +1,14 @@
+﻿@model decimal
+@{
+    // Read-only star display for a 0-5 value. Decimals are rounded to the
+    // nearest whole star so an averaged rating still renders sensibly.
+    var rounded = (int)Math.Round(Math.Clamp(Model, 0m, 5m), MidpointRounding.AwayFromZero);
+}
+<span class="star-rating readonly sm">
+    @for (int i = 1; i <= 5; i++)
+    {
+        <span class="star @(i <= rounded ? "filled" : "")"><i class="bi bi-star-fill"></i></span>
+    }
+</span>
+
+    

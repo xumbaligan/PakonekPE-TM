@@ -23,6 +23,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             var query = _context.PerformanceEvaluations
                 .Include(e => e.Employee)
                 .Include(e => e.Results).ThenInclude(r => r.Criteria)
+                .Include(e => e.Recommendations)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(StatusFilter) &&
@@ -45,14 +46,48 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .ToListAsync();
         }
 
-        // Small DTO for the View modal — only what the modal needs, serialized
-        // straight into the button's data-results attribute.
+        // Small DTOs for the View modal - only what the modal needs, serialized
+        // straight into the button's data-* attributes.
         public class ResultView
         {
             public string CriteriaName { get; set; } = string.Empty;
             public decimal Weight { get; set; }
+            public int Stars { get; set; }
             public decimal Score { get; set; }
-            public string? Remarks { get; set; }
+            public string? Feedback { get; set; }
         }
+
+        public class RecommendationView
+        {
+            public string Label { get; set; } = string.Empty;
+            public string Badge { get; set; } = "secondary";
+            public string? Details { get; set; }
+        }
+
+        // Shared by the Index modal and the Appraisal Records details modal so
+        // both render an evaluation exactly the same way.
+        public static List<ResultView> BuildResultViews(Model.PerformanceEvaluation e) =>
+            e.Results
+                .OrderByDescending(r => r.Criteria?.Weight ?? 0)
+                .Select(r => new ResultView
+                {
+                    CriteriaName = r.Criteria?.CriteriaName ?? "-",
+                    Weight = r.Criteria?.Weight ?? 0,
+                    Stars = r.StarRating,
+                    Score = r.Score,
+                    Feedback = r.Feedback
+                })
+                .ToList();
+
+        public static List<RecommendationView> BuildRecommendationViews(Model.PerformanceEvaluation e) =>
+            e.Recommendations
+                .OrderBy(r => r.EvaluationRecommendationID)
+                .Select(r => new RecommendationView
+                {
+                    Label = EvaluationRecommendation.RecommendationLabel(r.Recommendation),
+                    Badge = EvaluationRecommendation.RecommendationBadgeClass(r.Recommendation),
+                    Details = r.Details
+                })
+                .ToList();
     }
 }

@@ -10,9 +10,44 @@
     <a class="btn btn-outline-secondary" asp-page="Index"><i class="bi bi-arrow-left"></i> Back</a>
 </div>
 
-<div class="alert alert-info small">
-    <i class="bi bi-info-circle"></i>
-    This evaluation is its own historical record. Saving changes here never modifies any Job Ticket or Office Task.
+@* ===================== Employee performance snapshot ===================== *@
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-label">Completed Job/Task</div>
+                <div class="stat-value">@Model.Stats.CompletedJobsTasks</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-clock-history"></i></div>
+            <div>
+                <div class="stat-label">On-time Rate</div>
+                <div class="stat-value">@Model.Stats.OnTimeRate.ToString("0")%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+            <div>
+                <div class="stat-label">Rescheduled</div>
+                <div class="stat-value">@Model.Stats.Rescheduled</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+            <div>
+                <div class="stat-label">Cancelled</div>
+                <div class="stat-value">@Model.Stats.Cancelled</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <form method="post" id="evalForm">
@@ -34,159 +69,190 @@
                         <div class="form-text">Set automatically when this evaluation was created — not editable.</div>
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Evaluation Period</label>
+                        <input class="form-control" value="@Model.Evaluation.EvaluationPeriod" disabled />
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Evaluation Date <span class="text-danger">*</span></label>
                         <input asp-for="Evaluation.EvaluationDate" type="date" class="form-control"
                                value="@Model.Evaluation.EvaluationDate.ToString("yyyy-MM-dd")" />
                         <span asp-validation-for="Evaluation.EvaluationDate" class="text-danger"></span>
                         <div class="form-text">Also used as the appraisal date.</div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Status</label>
-                        <select asp-for="Evaluation.EvaluationStatus" class="form-select">
-                            <option value="Draft">Draft</option>
-                            <option value="Finalized">Finalized</option>
-                        </select>
-                        <div class="form-text">Setting this to Finalized locks the evaluation from further edits. Also the appraisal status.</div>
-                    </div>
                 </div>
             </div>
 
             <div class="card p-4 mb-4">
-                <h5 class="mb-3">@Model.Employee?.RoleType Criteria</h5>
-                @if (!Model.CriteriaList.Any())
-                {
-                    <div class="text-muted">No active criteria configured for this role type yet. Add some under Manager &gt; Criteria.</div>
-                }
-                else
-                {
-                    <table class="table align-middle">
-                        <thead>
-                            <tr class="text-muted small">
-                                <th>Criteria</th>
-                                <th style="width:140px">Score</th>
-                                <th>Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < Model.CriteriaList.Count; i++)
-                            {
-                                var c = Model.CriteriaList[i];
-                                var r = Model.Results[i];
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold">@c.CriteriaName</div>
-                                        <div class="text-muted small">@c.Description (@c.Weight%)</div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <input type="number" class="form-control criteria-score-input"
-                                                   name="Results[@i].Score" min="0" max="@c.Weight" step="0.5"
-                                                   value="@r.Score" data-max="@c.Weight" />
-                                            <span class="input-group-text">/ @c.Weight</span>
-                                        </div>
-                                        <input type="hidden" name="Results[@i].CriteriaID" value="@c.CriteriaId" />
-                                    </td>
-                                    <td>
-                                        <input type="text" class="form-control form-control-sm" name="Results[@i].Remarks"
-                                               maxlength="500" value="@r.Remarks" />
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
+                <h5 class="mb-1">@Model.Employee?.RoleType Criteria</h5>
+                <div class="text-muted small mb-3">Rate each criterion from 1 to 5 stars. Click the same star again to clear it.</div>
+                <partial name="_CriteriaStarRows" model="Model.Rows" />
             </div>
 
+            @* ===================== Appraisal recommendations ===================== *@
             <div class="card p-4 mb-4">
-                <h5 class="mb-3">Appraisal Recommendation</h5>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Primary Recommendation</label>
-                        <select asp-for="Evaluation.Recommendation" class="form-select">
-                            @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
-                            {
-                                <option value="@r">@TM_PE.Model.PerformanceEvaluation.RecommendationLabel(r)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.SalaryAdjustmentRecommendation" />
-                                <label class="form-check-label">Salary Adjustment</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.PromotionRecommendation" />
-                                <label class="form-check-label">Promotion</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.TrainingRecommendation" />
-                                <label class="form-check-label">Training</label>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Appraisal Recommendation</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addRecommendationBtn">
+                        <i class="bi bi-plus-lg"></i> Add Recommendation
+                    </button>
+                </div>
+                <div id="recommendationList">
+                    @for (int i = 0; i < Model.Recommendations.Count; i++)
+                    {
+                        var key = $"p{i}";
+                        var rec = Model.Recommendations[i];
+                        <div class="border rounded p-3 mb-2 recommendation-row">
+                            <input type="hidden" name="Recommendations.Index" value="@key" />
+                            <div class="row g-2 align-items-start">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold mb-1">Recommendation</label>
+                                    <select class="form-select form-select-sm" name="Recommendations[@key].Recommendation">
+                                        @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                                        {
+                                            <option value="@r" selected="@(r == rec.Recommendation)">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
+                                    <input type="text" class="form-control form-control-sm" maxlength="500"
+                                           name="Recommendations[@key].Details" value="@rec.Details" />
+                                </div>
+                                <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    }
+                </div>
+                <div class="text-muted small" id="noRecommendationNotice">
+                    No recommendations added. Use <strong>Add Recommendation</strong> if this evaluation calls for one.
                 </div>
             </div>
 
             <div class="card p-4">
-                <label class="form-label fw-semibold">Remarks</label>
-                <textarea asp-for="Evaluation.GeneralRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
-                <div class="form-text">Covers both the evaluation and the appraisal decision — just one remarks field.</div>
+                <label class="form-label fw-semibold">Feedback</label>
+                <textarea asp-for="Evaluation.GeneralFeedback" class="form-control" rows="3" maxlength="1000"
+                          placeholder="Overall feedback for this evaluation period..."></textarea>
+                <div class="form-text">Covers both the evaluation and the appraisal decision.</div>
             </div>
         </div>
 
         <div class="col-lg-4">
-            <div class="card p-4 mb-4 sticky-top" style="top:1rem">
+            <div class="card p-4 mb-3 sticky-top" style="top:1rem">
                 <h6 class="text-muted">Overall Score (preview)</h6>
                 <div class="display-6 fw-bold" id="overallScorePreview">@Model.Evaluation.OverallScore.ToString("0.#")</div>
                 <div class="text-muted small">out of 100</div>
-                <div class="mt-2">
+                <div class="mt-2 d-flex align-items-center gap-2">
+                    <span id="overallStarsPreview"></span>
                     <span class="badge bg-primary-subtle text-primary" id="overallRatingPreview">@Model.Evaluation.OverallRating</span>
                 </div>
-            </div>
 
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Evaluation and Appraisal</button>
+                <hr />
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-outline-secondary" asp-page-handler="SaveDraft" asp-route-id="@Model.Evaluation.EvaluationID">
+                        <i class="bi bi-save"></i> Save as Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary" asp-page-handler="Finalize" asp-route-id="@Model.Evaluation.EvaluationID"
+                            onclick="return confirm('Finalize this evaluation? Once finalized it can no longer be edited.');">
+                        <i class="bi bi-check2-circle"></i> Finalize Evaluation
+                    </button>
+                </div>
+                <div class="form-text mt-2">A draft can still be edited later; finalizing locks it.</div>
+            </div>
         </div>
     </div>
 </form>
 
+<template id="recommendationTemplate">
+    <div class="border rounded p-3 mb-2 recommendation-row">
+        <input type="hidden" name="Recommendations.Index" value="__KEY__" />
+        <div class="row g-2 align-items-start">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold mb-1">Recommendation</label>
+                <select class="form-select form-select-sm" name="Recommendations[__KEY__].Recommendation">
+                    @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                    {
+                        <option value="@r">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control form-control-sm" maxlength="500"
+                       name="Recommendations[__KEY__].Details" placeholder="Why this recommendation..." />
+            </div>
+            <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
 @section Scripts {
+    <script src="~/js/star-rating.js"></script>
     <script>
         (function () {
             const scorePreview = document.getElementById('overallScorePreview');
             const ratingPreview = document.getElementById('overallRatingPreview');
+            const starsPreview = document.getElementById('overallStarsPreview');
 
-            const bands = [
-                [90, 'Excellent'],
-                [80, 'Very Good'],
-                [70, 'Good'],
-                [60, 'Needs Improvement'],
-                [0, 'Poor']
-            ];
+            const bands = [[90, 'Excellent'], [80, 'Very Good'], [70, 'Good'], [60, 'Needs Improvement'], [0, 'Poor']];
 
             function ratingFor(score) {
-                for (const [min, label] of bands) {
-                    if (score >= min) return label;
-                }
+                for (const [min, label] of bands) { if (score >= min) return label; }
                 return 'Poor';
             }
 
             function recalcPreview() {
                 let total = 0;
-                document.querySelectorAll('.criteria-score-input').forEach(input => {
-                    const max = parseFloat(input.dataset.max || '0');
-                    let val = parseFloat(input.value || '0');
-                    if (isNaN(val)) val = 0;
-                    val = Math.min(Math.max(val, 0), max);
-                    total += val;
+                document.querySelectorAll('.star-value-input:not(:disabled)').forEach(input => {
+                    const weight = parseFloat(input.dataset.weight || '0');
+                    const stars = parseInt(input.value || '0', 10) || 0;
+                    total += weight * Math.min(Math.max(stars, 0), 5) / 5;
                 });
                 scorePreview.textContent = total.toFixed(1);
                 ratingPreview.textContent = ratingFor(total);
+                starsPreview.innerHTML = window.StarRating.render(total / 20);
             }
 
-            document.addEventListener('input', function (e) {
-                if (e.target.classList.contains('criteria-score-input')) recalcPreview();
+            document.addEventListener('change', function (e) {
+                if (e.target.classList.contains('star-value-input')) recalcPreview();
             });
+
+            // ---- Add Recommendation ----
+            const recList = document.getElementById('recommendationList');
+            const recNotice = document.getElementById('noRecommendationNotice');
+            const recTemplate = document.getElementById('recommendationTemplate').innerHTML;
+            let recCounter = 0;
+
+            function refreshRecNotice() {
+                recNotice.classList.toggle('d-none', recList.children.length > 0);
+            }
+
+            document.getElementById('addRecommendationBtn').addEventListener('click', function () {
+                const key = 'n' + (recCounter++);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = recTemplate.replaceAll('__KEY__', key);
+                recList.appendChild(wrapper.firstElementChild);
+                refreshRecNotice();
+            });
+
+            recList.addEventListener('click', function (e) {
+                const btn = e.target.closest('.remove-recommendation');
+                if (!btn) return;
+                btn.closest('.recommendation-row').remove();
+                refreshRecNotice();
+            });
+
+            window.StarRating.initAll(document);
+            recalcPreview();
+            refreshRecNotice();
         })();
     </script>
 }

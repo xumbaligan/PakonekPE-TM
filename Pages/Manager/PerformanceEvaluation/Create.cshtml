@@ -10,11 +10,44 @@
     <a class="btn btn-outline-secondary" asp-page="Index"><i class="bi bi-arrow-left"></i> Back</a>
 </div>
 
-<div class="alert alert-info small">
-    <i class="bi bi-info-circle"></i>
-    This evaluation and its appraisal decision are saved together as one historical record.
-    Completed jobs/tasks below are shown only as supporting information — saving this form
-    never changes any Job Ticket or Office Task.
+@* ===================== Employee performance snapshot ===================== *@
+<div class="row g-3 mb-4" id="statTiles">
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-label">Completed Job/Task</div>
+                <div class="stat-value" id="statCompleted">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-clock-history"></i></div>
+            <div>
+                <div class="stat-label">On-time Rate</div>
+                <div class="stat-value" id="statOnTime">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+            <div>
+                <div class="stat-label">Rescheduled</div>
+                <div class="stat-value" id="statRescheduled">—</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+            <div>
+                <div class="stat-label">Cancelled</div>
+                <div class="stat-value" id="statCancelled">—</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <form method="post" id="evalForm">
@@ -29,14 +62,13 @@
                             <option value="">Select an employee</option>
                             @foreach (var emp in Model.EmployeeList)
                             {
-                                var info = Model.SupportInfo.GetValueOrDefault(emp.EmployeeId) ?? new CreateModel.EmployeeSupportInfo();
+                                var s = Model.Stats.GetValueOrDefault(emp.EmployeeId) ?? new TM_PE.Model.EmployeePerformanceStats();
                                 <option value="@emp.EmployeeId"
                                         data-roletype="@emp.RoleType"
-                                        data-completed-tickets="@info.CompletedJobTickets"
-                                        data-active-tickets="@info.ActiveJobTickets"
-                                        data-completed-tasks="@info.CompletedOfficeTasks"
-                                        data-active-tasks="@info.ActiveOfficeTasks"
-                                        data-avg-score="@info.AverageTaskScore">
+                                        data-completed="@s.CompletedJobsTasks"
+                                        data-ontime="@s.OnTimeRate.ToString("0")"
+                                        data-rescheduled="@s.Rescheduled"
+                                        data-cancelled="@s.Cancelled">
                                     @emp.FullName (@emp.RoleType)
                                 </option>
                             }
@@ -57,14 +89,6 @@
                         <div class="form-text">Also used as the appraisal date.</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Status</label>
-                        <select asp-for="Evaluation.EvaluationStatus" class="form-select">
-                            <option value="Draft">Draft</option>
-                            <option value="Finalized">Finalized</option>
-                        </select>
-                        <div class="form-text">Draft can still be edited later; Finalized locks it. Also the appraisal status.</div>
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Evaluator</label>
                         <input class="form-control" value="@Model.CurrentManagerName" disabled />
                         <div class="form-text">Automatically set to your manager account.</div>
@@ -78,201 +102,189 @@
 
             @* ===================== Field Technician criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="fieldTechnicianCriteriaCard">
-                <h5 class="mb-3">Field Technician Criteria</h5>
-                <table class="table align-middle">
-                    <thead>
-                        <tr class="text-muted small">
-                            <th>Criteria</th>
-                            <th style="width:140px">Score</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for (int i = 0; i < Model.FieldTechnicianCriteria.Count; i++)
-                        {
-                            var c = Model.FieldTechnicianCriteria[i];
-                            <tr>
-                                <td>
-                                    <div class="fw-semibold">@c.CriteriaName</div>
-                                    <div class="text-muted small">@c.Description (@c.Weight%)</div>
-                                </td>
-                                <td>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control criteria-score-input"
-                                               name="Results[@i].Score" min="0" max="@c.Weight" step="0.5"
-                                               value="0" disabled data-criteria-id="@c.CriteriaId" data-max="@c.Weight" />
-                                        <span class="input-group-text">/ @c.Weight</span>
-                                    </div>
-                                    <input type="hidden" name="Results[@i].CriteriaID" value="@c.CriteriaId" disabled class="criteria-id-input" />
-                                </td>
-                                <td>
-                                    <input type="text" class="form-control form-control-sm" name="Results[@i].Remarks" maxlength="500" disabled />
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <h5 class="mb-1">Field Technician Criteria</h5>
+                <div class="text-muted small mb-3">Rate each criterion from 1 to 5 stars. Click the same star again to clear it.</div>
+                <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.FieldTechnicianCriteria)" />
             </div>
 
             @* ===================== Office Staff criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="officeStaffCriteriaCard">
-                <h5 class="mb-3">Office Staff Criteria</h5>
-                <table class="table align-middle">
-                    <thead>
-                        <tr class="text-muted small">
-                            <th>Criteria</th>
-                            <th style="width:140px">Score</th>
-                            <th>Remarks</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for (int i = 0; i < Model.OfficeStaffCriteria.Count; i++)
-                        {
-                            var c = Model.OfficeStaffCriteria[i];
-                            var idx = Model.FieldTechnicianCriteria.Count + i;
-                            <tr>
-                                <td>
-                                    <div class="fw-semibold">@c.CriteriaName</div>
-                                    <div class="text-muted small">@c.Description (@c.Weight%)</div>
-                                </td>
-                                <td>
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control criteria-score-input"
-                                               name="Results[@idx].Score" min="0" max="@c.Weight" step="0.5"
-                                               value="0" disabled data-criteria-id="@c.CriteriaId" data-max="@c.Weight" />
-                                        <span class="input-group-text">/ @c.Weight</span>
-                                    </div>
-                                    <input type="hidden" name="Results[@idx].CriteriaID" value="@c.CriteriaId" disabled class="criteria-id-input" />
-                                </td>
-                                <td>
-                                    <input type="text" class="form-control form-control-sm" name="Results[@idx].Remarks" maxlength="500" disabled />
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <h5 class="mb-1">Office Staff Criteria</h5>
+                <div class="text-muted small mb-3">Rate each criterion from 1 to 5 stars. Click the same star again to clear it.</div>
+                <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.OfficeStaffCriteria)" />
             </div>
 
-            @* ===================== Appraisal recommendation (after criteria) ===================== *@
+            @* ===================== Appraisal recommendations ===================== *@
             <div class="card p-4 mb-4">
-                <h5 class="mb-3">Appraisal Recommendation</h5>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Primary Recommendation</label>
-                        <select asp-for="Evaluation.Recommendation" class="form-select">
-                            @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
-                            {
-                                <option value="@r">@TM_PE.Model.PerformanceEvaluation.RecommendationLabel(r)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.SalaryAdjustmentRecommendation" />
-                                <label class="form-check-label">Salary Adjustment</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.PromotionRecommendation" />
-                                <label class="form-check-label">Promotion</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" asp-for="Evaluation.TrainingRecommendation" />
-                                <label class="form-check-label">Training</label>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Appraisal Recommendation</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addRecommendationBtn">
+                        <i class="bi bi-plus-lg"></i> Add Recommendation
+                    </button>
+                </div>
+                <div id="recommendationList">
+                    @* Re-rendered on a validation postback so nothing the manager already added is lost. *@
+                    @for (int i = 0; i < Model.Recommendations.Count; i++)
+                    {
+                        var key = $"p{i}";
+                        var rec = Model.Recommendations[i];
+                        <div class="border rounded p-3 mb-2 recommendation-row">
+                            <input type="hidden" name="Recommendations.Index" value="@key" />
+                            <div class="row g-2 align-items-start">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold mb-1">Recommendation</label>
+                                    <select class="form-select form-select-sm" name="Recommendations[@key].Recommendation">
+                                        @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                                        {
+                                            <option value="@r" selected="@(r == rec.Recommendation)">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
+                                    <input type="text" class="form-control form-control-sm" maxlength="500"
+                                           name="Recommendations[@key].Details" value="@rec.Details" />
+                                </div>
+                                <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    }
+                </div>
+                <div class="text-muted small" id="noRecommendationNotice">
+                    No recommendations added. Use <strong>Add Recommendation</strong> if this evaluation calls for one.
                 </div>
             </div>
 
             <div class="card p-4">
-                <label class="form-label fw-semibold">Remarks</label>
-                <textarea asp-for="Evaluation.GeneralRemarks" class="form-control" rows="3" maxlength="1000"></textarea>
-                <div class="form-text">Covers both the evaluation and the appraisal decision — just one remarks field.</div>
+                <label class="form-label fw-semibold">Feedback</label>
+                <textarea asp-for="Evaluation.GeneralFeedback" class="form-control" rows="3" maxlength="1000"
+                          placeholder="Overall feedback for this evaluation period..."></textarea>
+                <div class="form-text">Covers both the evaluation and the appraisal decision.</div>
             </div>
         </div>
 
         <div class="col-lg-4">
-            <div class="card p-4 mb-4 sticky-top" style="top:1rem">
-                <h5 class="mb-3">Supporting Information</h5>
-                <div id="supportInfoBox" class="text-muted small">Select an employee to see their workload stats.</div>
-
-                <hr />
-
+            <div class="card p-4 mb-3 sticky-top" style="top:1rem">
                 <h6 class="text-muted">Overall Score (preview)</h6>
                 <div class="display-6 fw-bold" id="overallScorePreview">0.0</div>
                 <div class="text-muted small">out of 100</div>
-                <div class="mt-2">
+                <div class="mt-2 d-flex align-items-center gap-2">
+                    <span id="overallStarsPreview"></span>
                     <span class="badge bg-primary-subtle text-primary" id="overallRatingPreview">—</span>
                 </div>
-            </div>
 
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Evaluation and Appraisal</button>
+                <hr />
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-outline-secondary" asp-page-handler="SaveDraft">
+                        <i class="bi bi-save"></i> Save as Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary" asp-page-handler="Finalize"
+                            onclick="return confirm('Finalize this evaluation? Once finalized it can no longer be edited.');">
+                        <i class="bi bi-check2-circle"></i> Finalize Evaluation
+                    </button>
+                </div>
+                <div class="form-text mt-2">A draft can still be edited later; finalizing locks it.</div>
+            </div>
         </div>
     </div>
 </form>
 
+@* Template cloned by the Add Recommendation button. *@
+<template id="recommendationTemplate">
+    <div class="border rounded p-3 mb-2 recommendation-row">
+        <input type="hidden" name="Recommendations.Index" value="__KEY__" />
+        <div class="row g-2 align-items-start">
+            <div class="col-md-5">
+                <label class="form-label small fw-semibold mb-1">Recommendation</label>
+                <select class="form-select form-select-sm" name="Recommendations[__KEY__].Recommendation">
+                    @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
+                    {
+                        <option value="@r">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="text" class="form-control form-control-sm" maxlength="500"
+                       name="Recommendations[__KEY__].Details" placeholder="Why this recommendation..." />
+            </div>
+            <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
 @section Scripts {
+    <script src="~/js/star-rating.js"></script>
     <script>
         (function () {
             const employeeSelect = document.getElementById('employeeSelect');
             const noEmployeeNotice = document.getElementById('noEmployeeNotice');
             const ftCard = document.getElementById('fieldTechnicianCriteriaCard');
             const osCard = document.getElementById('officeStaffCriteriaCard');
-            const supportInfoBox = document.getElementById('supportInfoBox');
             const scorePreview = document.getElementById('overallScorePreview');
             const ratingPreview = document.getElementById('overallRatingPreview');
+            const starsPreview = document.getElementById('overallStarsPreview');
 
             // Rating bands mirrored from Model.EvaluationScoring for the live
-            // client-side preview only — the server always recalculates and is
+            // client-side preview only - the server always recalculates and is
             // the source of truth for what actually gets saved.
-            const bands = [
-                [90, 'Excellent'],
-                [80, 'Very Good'],
-                [70, 'Good'],
-                [60, 'Needs Improvement'],
-                [0, 'Poor']
-            ];
+            const bands = [[90, 'Excellent'], [80, 'Very Good'], [70, 'Good'], [60, 'Needs Improvement'], [0, 'Poor']];
 
             function ratingFor(score) {
-                for (const [min, label] of bands) {
-                    if (score >= min) return label;
-                }
+                for (const [min, label] of bands) { if (score >= min) return label; }
                 return 'Poor';
             }
 
             function setBlockEnabled(card, enabled) {
                 card.classList.toggle('d-none', !enabled);
-                card.querySelectorAll('input').forEach(input => {
-                    input.disabled = !enabled;
-                    if (!enabled && input.classList.contains('criteria-score-input')) {
-                        input.value = 0;
-                    }
+                card.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = !enabled;
+                    if (!enabled && el.classList.contains('star-value-input')) el.value = 0;
                 });
+                if (!enabled) {
+                    card.querySelectorAll('[data-star-input]').forEach(c => window.StarRating.paint(c, 0));
+                }
             }
 
             function recalcPreview() {
                 let total = 0;
-                document.querySelectorAll('.criteria-score-input:not(:disabled)').forEach(input => {
-                    const max = parseFloat(input.dataset.max || '0');
-                    let val = parseFloat(input.value || '0');
-                    if (isNaN(val)) val = 0;
-                    val = Math.min(Math.max(val, 0), max);
-                    total += val;
+                document.querySelectorAll('.star-value-input:not(:disabled)').forEach(input => {
+                    const weight = parseFloat(input.dataset.weight || '0');
+                    const stars = parseInt(input.value || '0', 10) || 0;
+                    total += weight * Math.min(Math.max(stars, 0), 5) / 5;
                 });
                 scorePreview.textContent = total.toFixed(1);
                 ratingPreview.textContent = ratingFor(total);
+                starsPreview.innerHTML = window.StarRating.render(total / 20);
+            }
+
+            function applyStats(opt) {
+                const has = opt && opt.value;
+                document.getElementById('statCompleted').textContent = has ? opt.dataset.completed : '—';
+                document.getElementById('statOnTime').textContent = has ? opt.dataset.ontime + '%' : '—';
+                document.getElementById('statRescheduled').textContent = has ? opt.dataset.rescheduled : '—';
+                document.getElementById('statCancelled').textContent = has ? opt.dataset.cancelled : '—';
             }
 
             employeeSelect.addEventListener('change', function () {
                 const opt = employeeSelect.options[employeeSelect.selectedIndex];
                 const roleType = opt ? opt.getAttribute('data-roletype') : '';
 
+                applyStats(opt);
+
                 if (!roleType) {
                     noEmployeeNotice.classList.remove('d-none');
                     setBlockEnabled(ftCard, false);
                     setBlockEnabled(osCard, false);
-                    supportInfoBox.innerHTML = 'Select an employee to see their workload stats.';
                     recalcPreview();
                     return;
                 }
@@ -280,33 +292,49 @@
                 noEmployeeNotice.classList.add('d-none');
                 setBlockEnabled(ftCard, roleType === 'FieldTechnician');
                 setBlockEnabled(osCard, roleType === 'OfficeStaff');
-
-                if (roleType === 'FieldTechnician') {
-                    supportInfoBox.innerHTML = `
-                        <div class="d-flex justify-content-between"><span>Completed job tickets</span><strong>${opt.dataset.completedTickets}</strong></div>
-                        <div class="d-flex justify-content-between"><span>Active job tickets</span><strong>${opt.dataset.activeTickets}</strong></div>
-                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals.</div>
-                    `;
-                } else {
-                    supportInfoBox.innerHTML = `
-                        <div class="d-flex justify-content-between"><span>Completed office tasks</span><strong>${opt.dataset.completedTasks}</strong></div>
-                        <div class="d-flex justify-content-between"><span>Active office tasks</span><strong>${opt.dataset.activeTasks}</strong></div>
-                        <div class="d-flex justify-content-between"><span>Average task score</span><strong>${opt.dataset.avgScore}</strong></div>
-                        <div class="text-muted mt-2" style="font-size:.8rem">All-time totals.</div>
-                    `;
-                }
-
                 recalcPreview();
             });
 
-            document.addEventListener('input', function (e) {
-                if (e.target.classList.contains('criteria-score-input')) recalcPreview();
+            document.addEventListener('change', function (e) {
+                if (e.target.classList.contains('star-value-input')) recalcPreview();
             });
 
-            // Restore selection on validation-failure postback.
+            // ---- Add Recommendation ----
+            const recList = document.getElementById('recommendationList');
+            const recNotice = document.getElementById('noRecommendationNotice');
+            const recTemplate = document.getElementById('recommendationTemplate').innerHTML;
+            let recCounter = 0;
+
+            function refreshRecNotice() {
+                recNotice.classList.toggle('d-none', recList.children.length > 0);
+            }
+
+            document.getElementById('addRecommendationBtn').addEventListener('click', function () {
+                const key = 'r' + (recCounter++);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = recTemplate.replaceAll('__KEY__', key);
+                recList.appendChild(wrapper.firstElementChild);
+                refreshRecNotice();
+            });
+
+            recList.addEventListener('click', function (e) {
+                const btn = e.target.closest('.remove-recommendation');
+                if (!btn) return;
+                btn.closest('.recommendation-row').remove();
+                refreshRecNotice();
+            });
+
+            // Initial state (also covers a validation-failure postback).
+            window.StarRating.initAll(document);
+            setBlockEnabled(ftCard, false);
+            setBlockEnabled(osCard, false);
             if (employeeSelect.value) {
                 employeeSelect.dispatchEvent(new Event('change'));
+            } else {
+                applyStats(null);
+                recalcPreview();
             }
+            refreshRecNotice();
         })();
     </script>
 }

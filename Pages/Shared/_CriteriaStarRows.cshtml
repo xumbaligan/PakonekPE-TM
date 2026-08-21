@@ -1,0 +1,64 @@
+﻿@model List<TM_PE.Model.CriteriaStarRow>
+@*
+    Shared star-rating table for Performance Evaluation Create/Edit.
+
+    Collection binding uses the "Results.Index" hidden-input form rather than
+    plain 0..n indices: on the Create page only the block matching the selected
+    employee's role type is enabled, so the posted indices are never guaranteed
+    to be contiguous from zero.
+*@
+@if (!Model.Any())
+{
+    <div class="text-muted">No active criteria configured for this role type yet. Add some under Manager &gt; Criteria.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr class="text-muted small">
+                    <th style="width:34%">Criteria</th>
+                    <th style="width:30%">Rating</th>
+                    <th>Feedback</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    var c = row.Criteria;
+                    var key = $"c{c.CriteriaId}";
+                    var starsId = $"stars_{key}";
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">@c.CriteriaName</div>
+                            <div class="text-muted small">@c.Description (@c.Weight%)</div>
+                        </td>
+                        <td>
+                            <input type="hidden" name="Results.Index" value="@key" />
+                            <input type="hidden" name="Results[@key].CriteriaID" value="@c.CriteriaId" />
+
+                            <div class="star-rating" data-star-input data-target="@starsId">
+                                @for (int star = 1; star <= TM_PE.Model.EvaluationScoring.MaxStars; star++)
+                                {
+                                    <button type="button" class="star @(star <= row.StarRating ? "filled" : "")"
+                                            data-value="@star" aria-label="@star star(s)">
+                                        <i class="bi bi-star-fill"></i>
+                                    </button>
+                                }
+                            </div>
+
+                            <input type="hidden" class="star-value-input" id="@starsId"
+                                   name="Results[@key].StarRating" value="@row.StarRating" data-weight="@c.Weight" />
+                            <div class="star-value-label" data-weight="@c.Weight">Not rated</div>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" maxlength="500"
+                                   name="Results[@key].Feedback" value="@row.Feedback"
+                                   placeholder="Feedback for this criterion..." />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

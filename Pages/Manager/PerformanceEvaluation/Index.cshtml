@@ -28,209 +28,92 @@
 </form>
 
 <div class="card">
-    <table class="table table-hover mb-0 align-middle">
-        <thead>
-            <tr>
-                <th>Employee</th>
-                <th>Evaluator</th>
-                <th>Evaluation Date</th>
-                <th>Overall Score</th>
-                <th>Rating</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (!Model.Evaluations.Any())
-            {
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No performance evaluations yet.</td>
+                    <th>Employee</th>
+                    <th>Period</th>
+                    <th>Evaluator</th>
+                    <th>Evaluation Date</th>
+                    <th>Rating</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
                 </tr>
-            }
-            else
-            {
-                @foreach (var e in Model.Evaluations)
+            </thead>
+            <tbody>
+                @if (!Model.Evaluations.Any())
                 {
-                    var results = e.Results
-                    .OrderByDescending(r => r.Criteria?.Weight ?? 0)
-                    .Select(r => new TM_PE.Pages.Manager.PerformanceEvaluation.IndexModel.ResultView
-                    {
-                        CriteriaName = r.Criteria?.CriteriaName ?? "—",
-                        Weight = r.Criteria?.Weight ?? 0,
-                        Score = r.Score,
-                        Remarks = r.Remarks
-                    });
-
                     <tr>
-                        <td>
-                            <strong>@(e.Employee?.FullName ?? "—")</strong>
-                            <div class="text-muted small">@e.Employee?.RoleType</div>
-                        </td>
-                        <td>@e.EvaluatorName</td>
-                        <td>@e.EvaluationDate.ToString("MMM d, yyyy")</td>
-                        <td>@e.OverallScore.ToString("0.##") / 100</td>
-                        <td>@e.OverallRating</td>
-                        <td>
-                            @if (e.EvaluationStatus == TM_PE.Model.EvaluationStatus.Finalized)
-                            {
-                                <span class="badge bg-success-subtle text-success-emphasis">Finalized</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary-subtle text-secondary">Draft</span>
-                            }
-                        </td>
-                        <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-outline-secondary view-evaluation-btn"
-                                    data-bs-toggle="modal" data-bs-target="#evaluationModal"
-                                    data-employee="@(e.Employee?.FullName ?? "—")"
-                                    data-role="@(e.Employee?.RoleType.ToString() ?? "—")"
-                                    data-evaluator="@e.EvaluatorName"
-                                    data-date="@e.EvaluationDate.ToString("MMMM d, yyyy")"
-                                    data-overall-score="@e.OverallScore.ToString("0.##")"
-                                    data-rating="@e.OverallRating"
-                                    data-status="@e.EvaluationStatus"
-                                    data-recommendation="@e.CombinedRecommendationLabel()"
-                                    data-salary="@(e.SalaryAdjustmentRecommendation ? "Yes" : "No")"
-                                    data-promotion="@(e.PromotionRecommendation ? "Yes" : "No")"
-                                    data-training="@(e.TrainingRecommendation ? "Yes" : "No")"
-                                    data-remarks="@(string.IsNullOrEmpty(e.GeneralRemarks) ? "—" : e.GeneralRemarks)"
-                                    data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
-                                    title="View full evaluation">
-                                <i class="bi bi-eye"></i> View
-                            </button>
-                            @if (e.EvaluationStatus == TM_PE.Model.EvaluationStatus.Draft)
-                            {
-                                <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@e.EvaluationID">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                            }
-                            <a class="btn btn-sm btn-outline-danger" asp-page="Delete" asp-route-id="@e.EvaluationID">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </td>
+                        <td colspan="8" class="text-center text-muted py-4">No performance evaluations yet.</td>
                     </tr>
                 }
-            }
-        </tbody>
-    </table>
-</div>
+                else
+                {
+                    @foreach (var e in Model.Evaluations)
+                    {
+                        var results = IndexModel.BuildResultViews(e);
+                        var recommendations = IndexModel.BuildRecommendationViews(e);
 
-@* ===================== Modal: Evaluation & Appraisal Details ===================== *@
-<div class="modal fade" id="evaluationModal" tabindex="-1" aria-labelledby="evaluationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="evaluationModalLabel"><i class="bi bi-clipboard-data"></i> Evaluation &amp; Appraisal Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-
-                <h6 class="text-muted text-uppercase small fw-bold mb-2">Evaluation</h6>
-                <div class="row g-3 mb-3">
-                    <div class="col-sm-6">
-                        <div class="text-muted small">Employee</div>
-                        <div class="fw-semibold" id="evalEmployee"></div>
-                        <div class="text-muted small" id="evalRole"></div>
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="text-muted small">Evaluator</div>
-                        <div class="fw-semibold" id="evalEvaluator"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Evaluation Date</div>
-                        <div class="fw-semibold" id="evalDate"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Overall Score</div>
-                        <div class="fw-semibold" id="evalScore"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Rating</div>
-                        <div class="fw-semibold" id="evalRating"></div>
-                    </div>
-                </div>
-
-                <div class="table-responsive mb-4">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr class="text-muted small">
-                                <th>Criteria</th>
-                                <th style="width:110px">Score</th>
-                                <th>Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="evalResultsBody"></tbody>
-                    </table>
-                </div>
-
-                <hr />
-
-                <h6 class="text-muted text-uppercase small fw-bold mb-2">Appraisal</h6>
-                <div class="row g-3 mb-2">
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Appraisal Date</div>
-                        <div class="fw-semibold" id="appraisalDate"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Appraisal Status</div>
-                        <div class="fw-semibold" id="appraisalStatus"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="text-muted small">Recommendation</div>
-                        <div class="fw-semibold" id="appraisalRecommendation"></div>
-                    </div>
-                </div>
-                <ul class="list-unstyled small text-muted mb-2">
-                    <li>Salary Adjustment: <span id="appraisalSalary"></span></li>
-                    <li>Promotion: <span id="appraisalPromotion"></span></li>
-                    <li>Training: <span id="appraisalTraining"></span></li>
-                </ul>
-                <div>
-                    <div class="text-muted small">Remarks</div>
-                    <div id="appraisalRemarks"></div>
-                </div>
-
-            </div>
-        </div>
+                        <tr>
+                            <td>
+                                <strong>@(e.Employee?.FullName ?? "-")</strong>
+                                <div class="text-muted small">@e.Employee?.RoleType</div>
+                            </td>
+                            <td>@e.EvaluationPeriod</td>
+                            <td>@e.EvaluatorName</td>
+                            <td>@e.EvaluationDate.ToString("MMM d, yyyy")</td>
+                            <td>
+                                <partial name="_Stars" model="e.OverallStars" />
+                                <div class="text-muted small">@e.OverallRating</div>
+                            </td>
+                            <td>@e.OverallScore.ToString("0.##") / 100</td>
+                            <td>
+                                @if (e.EvaluationStatus == TM_PE.Model.EvaluationStatus.Finalized)
+                                {
+                                    <span class="badge bg-success-subtle text-success-emphasis">Finalized</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary">Draft</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary view-evaluation-btn"
+                                        data-bs-toggle="modal" data-bs-target="#evaluationModal"
+                                        data-employee="@(e.Employee?.FullName ?? "-")"
+                                        data-role="@(e.Employee?.RoleType.ToString() ?? "-")"
+                                        data-period="@e.EvaluationPeriod"
+                                        data-evaluator="@e.EvaluatorName"
+                                        data-date="@e.EvaluationDate.ToString("MMMM d, yyyy")"
+                                        data-overall-score="@e.OverallScore.ToString("0.##")"
+                                        data-rating="@e.OverallRating"
+                                        data-status="@e.EvaluationStatus"
+                                        data-feedback="@e.GeneralFeedback"
+                                        data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
+                                        data-recommendations="@System.Text.Json.JsonSerializer.Serialize(recommendations)"
+                                        title="View full evaluation">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                @if (e.EvaluationStatus == TM_PE.Model.EvaluationStatus.Draft)
+                                {
+                                    <a class="btn btn-sm btn-outline-primary" asp-page="Edit" asp-route-id="@e.EvaluationID" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
     </div>
 </div>
 
+<partial name="_EvaluationModal" />
+
 @section Scripts {
-    <script>
-        document.querySelectorAll('.view-evaluation-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                document.getElementById('evalEmployee').textContent = this.dataset.employee;
-                document.getElementById('evalRole').textContent = this.dataset.role;
-                document.getElementById('evalEvaluator').textContent = this.dataset.evaluator;
-                document.getElementById('evalDate').textContent = this.dataset.date;
-                document.getElementById('evalScore').textContent = this.dataset.overallScore + ' / 100';
-                document.getElementById('evalRating').textContent = this.dataset.rating;
-
-                const results = JSON.parse(this.dataset.results || '[]');
-                const body = document.getElementById('evalResultsBody');
-                body.innerHTML = '';
-                if (results.length === 0) {
-                    body.innerHTML = '<tr><td colspan="3" class="text-muted small">No scored criteria.</td></tr>';
-                } else {
-                    results.forEach(r => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="small">${r.CriteriaName}</td>
-                            <td class="small">${r.Score} / ${r.Weight}</td>
-                            <td class="small">${r.Remarks ?? '—'}</td>`;
-                        body.appendChild(row);
-                    });
-                }
-
-                document.getElementById('appraisalDate').textContent = this.dataset.date;
-                document.getElementById('appraisalStatus').textContent = this.dataset.status;
-                document.getElementById('appraisalRecommendation').textContent = this.dataset.recommendation;
-                document.getElementById('appraisalSalary').textContent = this.dataset.salary;
-                document.getElementById('appraisalPromotion').textContent = this.dataset.promotion;
-                document.getElementById('appraisalTraining').textContent = this.dataset.training;
-                document.getElementById('appraisalRemarks').textContent = this.dataset.remarks;
-            });
-        });
-    </script>
+    <script src="~/js/star-rating.js"></script>
+    <script src="~/js/evaluation-modal.js"></script>
 }

@@ -155,6 +155,11 @@ app.Use(async (context, next) =>
         (path.StartsWithSegments("/Manager") && Allowed("Manager")) ||
         (path.StartsWithSegments("/FieldTechnician") && Allowed("FieldTechnician")) ||
         (path.StartsWithSegments("/OfficeStaff") && Allowed("OfficeStaff")) ||
+        // Shared self-service "My Account" (view info / change password) -
+        // any logged-in Manager, Field Technician, or Office Staff. Admin
+        // isn't offered this page; it manages its own account like everyone
+        // else's, through Admin > User Management.
+        (path.StartsWithSegments("/Account") && Allowed("Manager", "FieldTechnician", "OfficeStaff")) ||
         ((path == "/" || path.StartsWithSegments("/Index")) && Allowed("Manager", "Admin"));
 
     if (!authorized)

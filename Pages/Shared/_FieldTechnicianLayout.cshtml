@@ -9,19 +9,33 @@
     <link rel="stylesheet" href="~/css/site.css" />
 </head>
 <body>
+    <div class="mobile-topbar">
+        <button type="button" class="sidebar-toggle-btn" data-sidebar-toggle aria-label="Toggle menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <span class="fw-semibold"><i class="bi bi-graph-up-arrow"></i> Pakonek</span>
+    </div>
+    <button type="button" class="sidebar-backdrop" aria-label="Close menu" tabindex="-1"></button>
     <div class="d-flex">
         <aside class="sidebar text-white p-3" style="background-color: #0a2aa8;">
             <h4 class="mb-4"><i class="bi bi-graph-up-arrow"></i> Pakonek</h4>
             <nav class="nav flex-column">
                 <a class="nav-link text-white" asp-page="/FieldTechnician/Index"><i class="bi bi-tools"></i> Job Orders</a>
                 <a class="nav-link text-white" asp-page="/FieldTechnician/PerformanceRecords"><i class="bi bi-award"></i> My Performance Records</a>
+                <a class="nav-link text-white" asp-page="/Account/Index"><i class="bi bi-person-circle"></i> My Account</a>
+            </nav>
+
+            <hr class="text-white-50" />
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
             </nav>
         </aside>
-        <main class="flex-grow-1 p-4 bg-light min-vh-100">
+        <main class="flex-grow-1 p-3 p-md-4 bg-light min-vh-100" style="min-width:0;">
             @RenderBody()
         </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/sidebar-toggle.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

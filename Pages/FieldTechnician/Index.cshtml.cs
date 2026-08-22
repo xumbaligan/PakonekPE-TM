@@ -56,11 +56,5 @@ namespace TM_PE.Pages.FieldTechnician
 
             return Page();
         }
-
-        public IActionResult OnPostSwitchEmployee()
-        {
-            HttpContext.Session.Clear();
-            return RedirectToPage("/Login");
-        }
     }
 }

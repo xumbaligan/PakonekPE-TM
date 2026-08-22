@@ -44,11 +44,5 @@ namespace TM_PE.Pages.OfficeStaff
 
             return Page();
         }
-
-        public IActionResult OnPostSwitchEmployee()
-        {
-            HttpContext.Session.Clear();
-            return RedirectToPage("/Login");
-        }
     }
 }

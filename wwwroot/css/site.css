@@ -7,10 +7,101 @@ body {
     font-family: 'Segoe UI', sans-serif;
 }
 
+/*
+   position: sticky + align-self: flex-start keeps the sidebar pinned to
+   exactly the viewport height, independent of its flex sibling (main). By
+   default a flex row stretches every child to match the tallest one
+   (align-items: stretch), so without this the sidebar's rendered height
+   would track whatever main happens to be at that instant - very visible on
+   pages like Manager/PerformanceEvaluation/Create, where selecting an
+   employee reveals/hides large blocks of criteria via JS and used to make
+   the sidebar visibly grow/shrink along with it. overflow-y lets the nav
+   scroll on its own if it ever has more links than a short window can fit.
+*/
 .sidebar {
     width: 250px;
-    min-height: 100vh;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    overflow-y: auto;
     background-color: #1d4ed8;
+}
+
+/* ===================== Responsive app shell ===================== */
+/*
+   Below 992px (phones and portrait tablets) the sidebar becomes an
+   off-canvas panel: fixed, translated fully off-screen, and slid in over a
+   dimmed backdrop via the .sidebar-open toggle class (see
+   wwwroot/js/sidebar-toggle.js). At 992px and up (landscape tablets,
+   laptops, desktops) none of this applies - the sidebar rules above just
+   render statically like before, and .mobile-topbar stays hidden.
+*/
+.mobile-topbar {
+    display: none;
+    align-items: center;
+    gap: .75rem;
+    background-color: #0a2aa8;
+    color: #fff;
+    padding: .75rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+}
+
+    .mobile-topbar .sidebar-toggle-btn {
+        background: rgba(255,255,255,.12);
+        border: 0;
+        color: #fff;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .mobile-topbar .sidebar-toggle-btn:hover {
+            background: rgba(255,255,255,.22);
+        }
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .5);
+    z-index: 1045;
+    border: 0;
+    padding: 0;
+}
+
+@media (max-width: 991.98px) {
+    .mobile-topbar {
+        display: flex;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        max-width: 82vw;
+        z-index: 1050;
+        transform: translateX(-100%);
+        transition: transform .2s ease-in-out;
+        overflow-y: auto;
+    }
+
+        .sidebar.sidebar-open {
+            transform: translateX(0);
+        }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
 }
 
     .sidebar .nav-link {

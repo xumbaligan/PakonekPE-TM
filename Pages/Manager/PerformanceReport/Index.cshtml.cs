@@ -189,7 +189,12 @@ namespace TM_PE.Pages.Manager.PerformanceReport
 
         private async Task BuildReportAsync()
         {
+            // The report only ever lists Field Technicians and Office Staff
+            // (see the employee query below), so an Admin or Manager
+            // department would just be a filter option that always empties
+            // the report - leave those out of the dropdown entirely.
             DepartmentOptions = await _context.Departments
+                .Where(d => d.RoleType != RoleType.Admin && d.RoleType != RoleType.Manager)
                 .OrderBy(d => d.DepartmentName)
                 .ToListAsync();
 

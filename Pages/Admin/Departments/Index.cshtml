@@ -16,6 +16,7 @@
 </form>
 
 <div class="card">
+  <div class="table-responsive">
     <table class="table table-hover mb-0">
         <thead>
             <tr>
@@ -81,6 +82,7 @@
             }
         </tbody>
     </table>
+  </div>
 </div>
 <!-- Department Employees Modal -->
 <div class="modal fade" id="deptEmployeesModal" tabindex="-1" aria-labelledby="deptModalLabel" aria-hidden="true">
@@ -143,6 +145,7 @@
             }
 
             list.innerHTML = `
+                <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
@@ -173,7 +176,8 @@
                             </tr>`;
                         }).join('')}
                     </tbody>
-                </table>`;
+                </table>
+                </div>`;
         }
     </script>
 }

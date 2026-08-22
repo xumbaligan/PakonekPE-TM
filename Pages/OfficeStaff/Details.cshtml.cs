@@ -190,8 +190,15 @@ namespace TM_PE.Pages.OfficeStaff
             activity.AssignedEmployeeID = employeeId.Value;
 
             // A fresh upload puts the activity back into review, unless a manager already approved it.
+            // If it was Rejected, the manager's feedback applied to the old file, so clear it —
+            // it shouldn't linger once the employee has addressed it with a new submission.
             if (activity.Status != "Approved")
             {
+                if (activity.Status == "Rejected")
+                {
+                    activity.FeedBack = string.Empty;
+                }
+
                 activity.Status = "Submitted";
             }
 

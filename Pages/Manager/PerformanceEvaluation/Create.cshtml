@@ -32,19 +32,19 @@
     </div>
     <div class="col-6 col-lg-3">
         <div class="stat-tile d-flex align-items-center gap-3">
-            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+            <div class="stat-icon bg-warning-subtle text-warning" id="statTile3Icon"><i class="bi bi-arrow-repeat"></i></div>
             <div>
-                <div class="stat-label">Rescheduled</div>
-                <div class="stat-value" id="statRescheduled">—</div>
+                <div class="stat-label" id="statTile3Label">Rescheduled</div>
+                <div class="stat-value" id="statTile3Value">—</div>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
         <div class="stat-tile d-flex align-items-center gap-3">
-            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+            <div class="stat-icon bg-danger-subtle text-danger" id="statTile4Icon"><i class="bi bi-x-circle"></i></div>
             <div>
-                <div class="stat-label">Cancelled</div>
-                <div class="stat-value" id="statCancelled">—</div>
+                <div class="stat-label" id="statTile4Label">Cancelled</div>
+                <div class="stat-value" id="statTile4Value">—</div>
             </div>
         </div>
     </div>
@@ -68,7 +68,9 @@
                                         data-completed="@s.CompletedJobsTasks"
                                         data-ontime="@s.OnTimeRate.ToString("0")"
                                         data-rescheduled="@s.Rescheduled"
-                                        data-cancelled="@s.Cancelled">
+                                        data-cancelled="@s.Cancelled"
+                                        data-rejected="@s.RejectedActivities"
+                                        data-overdue="@s.OverdueTasks">
                                     @emp.FullName (@emp.RoleType)
                                 </option>
                             }
@@ -217,12 +219,46 @@
                 starsPreview.innerHTML = window.StarRating.render(total / 20);
             }
 
+            const tile3Icon = document.getElementById('statTile3Icon');
+            const tile3Label = document.getElementById('statTile3Label');
+            const tile3Value = document.getElementById('statTile3Value');
+            const tile4Icon = document.getElementById('statTile4Icon');
+            const tile4Label = document.getElementById('statTile4Label');
+            const tile4Value = document.getElementById('statTile4Value');
+
+            // Tiles 3/4 show different metrics depending on the selected
+            // employee's role: job ticket Rescheduled/Cancelled counts for a
+            // Field Technician, since Office Staff office tasks never use those
+            // statuses; Rejected activities/Overdue tasks for an Office Staff,
+            // since those are the equivalents that actually apply there.
             function applyStats(opt) {
                 const has = opt && opt.value;
+                const isOfficeStaff = has && opt.getAttribute('data-roletype') === 'OfficeStaff';
+
                 document.getElementById('statCompleted').textContent = has ? opt.dataset.completed : '—';
                 document.getElementById('statOnTime').textContent = has ? opt.dataset.ontime + '%' : '—';
-                document.getElementById('statRescheduled').textContent = has ? opt.dataset.rescheduled : '—';
-                document.getElementById('statCancelled').textContent = has ? opt.dataset.cancelled : '—';
+
+                if (isOfficeStaff) {
+                    tile3Icon.className = 'stat-icon bg-danger-subtle text-danger';
+                    tile3Icon.innerHTML = '<i class="bi bi-hand-thumbs-down"></i>';
+                    tile3Label.textContent = 'Rejected Activities';
+                    tile3Value.textContent = opt.dataset.rejected;
+
+                    tile4Icon.className = 'stat-icon bg-warning-subtle text-warning';
+                    tile4Icon.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+                    tile4Label.textContent = 'Overdue Task';
+                    tile4Value.textContent = opt.dataset.overdue;
+                } else {
+                    tile3Icon.className = 'stat-icon bg-warning-subtle text-warning';
+                    tile3Icon.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+                    tile3Label.textContent = 'Rescheduled';
+                    tile3Value.textContent = has ? opt.dataset.rescheduled : '—';
+
+                    tile4Icon.className = 'stat-icon bg-danger-subtle text-danger';
+                    tile4Icon.innerHTML = '<i class="bi bi-x-circle"></i>';
+                    tile4Label.textContent = 'Cancelled';
+                    tile4Value.textContent = has ? opt.dataset.cancelled : '—';
+                }
             }
 
             employeeSelect.addEventListener('change', function () {

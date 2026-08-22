@@ -30,24 +30,51 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-tile d-flex align-items-center gap-3">
-            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
-            <div>
-                <div class="stat-label">Rescheduled</div>
-                <div class="stat-value">@Model.Stats.Rescheduled</div>
+    @* Office Staff office tasks never use the Rescheduled/Cancelled job ticket
+       statuses, so those tiles would always read 0 for them - show the
+       equivalents that actually apply instead. *@
+    @if (Model.Employee?.RoleType == TM_PE.Model.RoleType.OfficeStaff)
+    {
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                <div>
+                    <div class="stat-label">Rejected Activities</div>
+                    <div class="stat-value">@Model.Stats.RejectedActivities</div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-tile d-flex align-items-center gap-3">
-            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
-            <div>
-                <div class="stat-label">Cancelled</div>
-                <div class="stat-value">@Model.Stats.Cancelled</div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-exclamation-triangle"></i></div>
+                <div>
+                    <div class="stat-label">Overdue Task</div>
+                    <div class="stat-value">@Model.Stats.OverdueTasks</div>
+                </div>
             </div>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+                <div>
+                    <div class="stat-label">Rescheduled</div>
+                    <div class="stat-value">@Model.Stats.Rescheduled</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+                <div>
+                    <div class="stat-label">Cancelled</div>
+                    <div class="stat-value">@Model.Stats.Cancelled</div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <form method="post" id="evalForm">

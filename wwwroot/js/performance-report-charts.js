@@ -52,13 +52,32 @@
     if (scoreData.length === 0) {
         showMessage('scoreByEmployeeMessage', emptyMsg);
     } else {
-        new Chart(document.getElementById('scoreByEmployeeChart'), {
+        // A category scale spaces its bars evenly across the full chart
+        // width no matter how many there are, so with just a few employees
+        // the bars end up spread out (reading as centered) instead of
+        // sitting together at the start. Padding out extra, unlabeled,
+        // valueless categories after the real ones keeps each bar at its
+        // normal width and packs the real employees left-to-right, while
+        // the chart itself stays exactly the size it was.
+        const canvas = document.getElementById('scoreByEmployeeChart');
+        const perBar = 90;
+        const availableWidth = canvas.parentElement.clientWidth;
+        const totalSlots = Math.max(scoreData.length, Math.floor(availableWidth / perBar));
+
+        const labels = scoreData.map(d => d.Label);
+        const values = scoreData.map(d => Number(d.Value));
+        for (let i = scoreData.length; i < totalSlots; i++) {
+            labels.push('');
+            values.push(null);
+        }
+
+        new Chart(canvas, {
             type: 'bar',
             data: {
-                labels: scoreData.map(d => d.Label),
+                labels: labels,
                 datasets: [{
                     label: 'Average Score',
-                    data: scoreData.map(d => Number(d.Value)),
+                    data: values,
                     backgroundColor: '#0d6efd',
                     borderRadius: 6,
                     maxBarThickness: 48

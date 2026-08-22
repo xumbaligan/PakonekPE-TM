@@ -13,8 +13,14 @@ namespace TM_PE.Model
         public int CompletedJobsTasks { get; set; }
         public int OnTimeCount { get; set; }
         public int OnTimeEligible { get; set; }
+
+        // Job ticket (Field Technician) specific.
         public int Rescheduled { get; set; }
         public int Cancelled { get; set; }
+
+        // Office task (Office Staff) specific.
+        public int RejectedActivities { get; set; }
+        public int OverdueTasks { get; set; }
 
         public decimal OnTimeRate => OnTimeEligible == 0
             ? 0
@@ -98,6 +104,22 @@ namespace TM_PE.Model
 
             var taskIds = taskAssignments.Select(a => a.OfficeTaskID).Distinct().ToList();
 
+            // Rejected activities are counted against whoever actually claimed
+            // them (AssignedEmployeeID), not every employee assigned to the
+            // parent task, since only the claiming employee's submission got rejected.
+            var rejectedCounts = await context.TaskActivities
+                .Where(a => a.AssignedEmployeeID.HasValue
+                    && ids.Contains(a.AssignedEmployeeID.Value)
+                    && a.Status == "Rejected")
+                .GroupBy(a => a.AssignedEmployeeID!.Value)
+                .Select(g => new { EmployeeID = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.EmployeeID, x => x.Count);
+
+            foreach (var (employeeId, count) in rejectedCounts)
+            {
+                stats[employeeId].RejectedActivities = count;
+            }
+
             // When an office task was actually finished: the latest file the
             // assigned staff submitted against any of its activities.
             var taskFinishDates = await context.ActivitySubmissions
@@ -121,9 +143,9 @@ namespace TM_PE.Model
                         : task.DueDate.Date;
                     if (finishedOn <= task.DueDate.Date) s.OnTimeCount++;
                 }
-                else if (string.Equals(task.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(task.Status, "Overdue", StringComparison.OrdinalIgnoreCase))
                 {
-                    s.Cancelled++;
+                    s.OverdueTasks++;
                 }
             }
 

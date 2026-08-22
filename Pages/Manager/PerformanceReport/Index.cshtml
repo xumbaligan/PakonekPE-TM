@@ -2,7 +2,7 @@
 @model TM_PE.Pages.Manager.PerformanceReport.IndexModel
 @{
     ViewData["Title"] = "Performance Report";
-    Layout = "_Layout";
+    Layout = Model.LayoutName;
     var periodLabel = string.IsNullOrWhiteSpace(Model.Period) ? "All Periods" : Model.Period;
     var averageClass = TM_PE.Model.EvaluationScoring.RatingBadgeClass(
         TM_PE.Model.EvaluationScoring.RatingFor(Model.AverageScore));
@@ -41,13 +41,16 @@
         </div>
         <div class="col-md-4">
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary flex-fill">
-                    <i class="bi bi-bar-chart-line"></i> Generate Report
-                </button>
+                @if (!Model.IsAdmin)
+                {
+                    <button type="submit" class="btn btn-primary flex-fill">
+                        <i class="bi bi-bar-chart-line"></i> Generate Report
+                    </button>
+                }
                 @* A link, not a submit button: on a GET form the browser
                    would overwrite ?handler=ExportCsv with the form's own
                    query string, so the handler would never be reached. *@
-                <a class="btn btn-outline-success text-nowrap" id="exportCsvBtn"
+                <a class="btn btn-outline-success text-nowrap @(Model.IsAdmin ? "flex-fill" : "")" id="exportCsvBtn"
                    asp-page-handler="ExportCsv"
                    asp-route-Period="@Model.Period"
                    asp-route-DepartmentId="@Model.DepartmentId">

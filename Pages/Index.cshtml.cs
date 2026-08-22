@@ -10,6 +10,11 @@ public class IndexModel : PageModel
     private readonly AppDbContext _db;
     public IndexModel(AppDbContext db) => _db = db;
 
+    // Admin can view this dashboard too (see Program.cs RBAC middleware), but
+    // gets the Admin sidebar (Dashboard + Performance Reports only) instead of
+    // the full Manager nav, since Admin isn't meant to manage tickets/tasks/etc.
+    public string LayoutName { get; set; } = "_Layout";
+
     public int DepartmentCount { get; set; }
     public int EmployeeCount { get; set; }
     public int CriteriaCount { get; set; }
@@ -43,6 +48,8 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        LayoutName = HttpContext.Session.GetString("AuthRoleType") == "Admin" ? "_Admin" : "_Layout";
+
         DepartmentCount = _db.Departments.Count();
         EmployeeCount = _db.Employees.Count();
         CriteriaCount = _db.Criteria.Count(c => c.IsActive);

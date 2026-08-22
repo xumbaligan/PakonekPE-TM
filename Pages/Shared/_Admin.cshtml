@@ -12,6 +12,15 @@
     <div class="d-flex">
         <aside class="sidebar text-white p-3" style="background-color: #0a2aa8;">
             <h4 class="mb-4"><i class="bi bi-graph-up-arrow"></i> Pakonek</h4>
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Index"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            </nav>
+
+            <div class="nav-section-label">Performance</div>
+            <nav class="nav flex-column">
+                <a class="nav-link text-white" asp-page="/Manager/PerformanceReport/Index"><i class="bi bi-file-earmark-text"></i> Performance Reports</a>
+            </nav>
+
             <div class="nav-section-label">Management</div>
             <nav class="nav flex-column">
                 <a class="nav-link text-white" asp-page="/Admin/Employees/Index"><i class="bi bi-people"></i> Employees</a>

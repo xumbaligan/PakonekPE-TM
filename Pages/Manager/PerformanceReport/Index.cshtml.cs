@@ -17,6 +17,17 @@ namespace TM_PE.Pages.Manager.PerformanceReport
         private readonly AppDbContext _context;
         public IndexModel(AppDbContext context) => _context = context;
 
+        // Admin can reach this page too (see Program.cs RBAC middleware), but
+        // gets the Admin sidebar instead of the full Manager nav, since Admin's
+        // access here is limited to viewing this report and exporting it.
+        public string LayoutName { get; set; } = "_Layout";
+
+        // The "Generate Report" button is a redundant explicit re-submit (the
+        // filters already auto-submit via JS on change, and the report is
+        // already built on the initial page load) - Admin only gets Export CSV,
+        // not that generate action, so it's hidden for them.
+        public bool IsAdmin { get; set; }
+
         // Filters arrive on the query string so "Generate Report" is a plain GET
         // - the report is bookmarkable and Export CSV can reuse the same values.
         [BindProperty(SupportsGet = true)]
@@ -117,6 +128,8 @@ namespace TM_PE.Pages.Manager.PerformanceReport
 
         public async Task OnGetAsync()
         {
+            IsAdmin = HttpContext.Session.GetString("AuthRoleType") == "Admin";
+            LayoutName = IsAdmin ? "_Admin" : "_Layout";
             await BuildReportAsync();
         }
 

@@ -25,7 +25,7 @@ builder.Services.AddSession(options =>
 var app = builder.Build();
 
 // One-time bootstrap: create a default Admin login if no Admin account
-// exists yet. Without this there's a chicken-and-egg problem — Admin >
+// exists yet. Without this there's a chicken-and-egg problem ï¿½ Admin >
 // User Management is itself Admin-only, so nobody could create the first
 // Admin account through the UI. Safe to leave in: it only ever acts when
 // zero Admin accounts exist, so it's a no-op on every later run.
@@ -148,7 +148,11 @@ app.Use(async (context, next) =>
 
     bool authorized =
         (path.StartsWithSegments("/Admin") && Allowed("Admin")) ||
-        (path.StartsWithSegments("/Manager") && Allowed("Manager", "Admin")) ||
+        // Admin's reach into /Manager is deliberately narrow: just the
+        // read-only Performance Report (view/generate/export), not the full
+        // Manager area (tickets, tasks, employees, evaluations, etc.).
+        (path.StartsWithSegments("/Manager/PerformanceReport") && Allowed("Manager", "Admin")) ||
+        (path.StartsWithSegments("/Manager") && Allowed("Manager")) ||
         (path.StartsWithSegments("/FieldTechnician") && Allowed("FieldTechnician")) ||
         (path.StartsWithSegments("/OfficeStaff") && Allowed("OfficeStaff")) ||
         ((path == "/" || path.StartsWithSegments("/Index")) && Allowed("Manager", "Admin"));

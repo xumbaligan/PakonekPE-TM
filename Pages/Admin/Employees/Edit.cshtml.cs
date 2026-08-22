@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TM_PE.Data;
 using TM_PE.Model;
@@ -13,7 +12,7 @@ public class EditModel : PageModel
     public EditModel(AppDbContext db) => _db = db;
 
     [BindProperty] public Employee Employee { get; set; } = new();
-    public SelectList DepartmentList { get; set; } = default!;
+    public List<Department> AllDepartments { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync(int id)
     {
@@ -42,6 +41,15 @@ public class EditModel : PageModel
         if (!ModelState.IsValid)
         {
             LoadLists(); return Page();
+        }
+
+        // The department must belong to the same role type as the employee
+        var department = await _db.Departments.FindAsync(Employee.DepartmentId);
+        if (department == null || department.RoleType != Employee.RoleType)
+        {
+            ModelState.AddModelError(
+                "Employee.DepartmentId",
+                "Select a department that matches the chosen role type.");
         }
 
         if (!namePattern.IsMatch(Employee.FullName))
@@ -83,5 +91,8 @@ public class EditModel : PageModel
     }
 
     private void LoadLists() =>
-        DepartmentList = new SelectList(_db.Departments.ToList(), "DepartmentId", "DepartmentName");
+        AllDepartments = _db.Departments
+            .Where(d => d.IsActive || d.DepartmentId == Employee.DepartmentId)
+            .OrderBy(d => d.DepartmentName)
+            .ToList();
 }

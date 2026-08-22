@@ -60,6 +60,7 @@
 
                 <select asp-for="JobTicket.JobType" id="jobTypeSelect" class="form-select" required>
 
+                    <option value="">Select job type</option>
                     @foreach (var type in Model.JobTypeOptions)
                     {
                         <option value="@type">@type</option>
@@ -229,6 +230,7 @@
                     <div class="row">
                         <div class="col-md-10">
                             <select id="employeeSelect" class="form-select">
+                                <option value="">Select a field technician</option>
                                 @foreach (var emp in Model.FieldTechnicianList)
                                 {
                                     <option value="@emp.EmployeeId">@emp.FullName</option>

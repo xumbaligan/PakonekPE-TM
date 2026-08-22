@@ -15,6 +15,9 @@ namespace TM_PE.Model
         [StringLength(500)]
         public string? Description { get; set; }
 
+        [Column(TypeName = "nvarchar(50)")]
+        public RoleType RoleType { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; }

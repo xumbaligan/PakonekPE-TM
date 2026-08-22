@@ -42,6 +42,10 @@ namespace TM_PE.Data
                 .Property(e => e.RoleType)
                 .HasConversion<string>();
 
+            b.Entity<Department>()
+                .Property(d => d.RoleType)
+                .HasConversion<string>();
+
             b.Entity<Criteria>()
                 .Property(e => e.RoleType)
                 .HasConversion<string>();

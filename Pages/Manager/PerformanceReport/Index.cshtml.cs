@@ -33,7 +33,12 @@ namespace TM_PE.Pages.Manager.PerformanceReport
         // ---- Summary tiles ----
         public int EmployeeCount => Rows.Count;
         public int AppraisalCount => Rows.Sum(r => r.Appraisals);
-        public int CompletedWorkItems => Rows.Sum(r => r.Completed);
+
+        // Counts distinct completed job tickets/office tasks, not
+        // Rows.Sum(r => r.Completed) — a job ticket or task assigned to
+        // multiple employees would otherwise be counted once per assignee
+        // instead of once for the work item itself.
+        public int CompletedWorkItems { get; set; }
 
         // Averaged over employees who actually have an evaluation in the
         // selected period, so unevaluated staff don't drag the figure to zero.
@@ -217,6 +222,27 @@ namespace TM_PE.Pages.Manager.PerformanceReport
             // Completed work items reuse the same helper the evaluation pages
             // use, so "Completed" means the same thing everywhere in the system.
             var stats = await EmployeePerformanceStatsBuilder.BuildAsync(_context, employeeIds);
+
+            // Distinct completed job tickets/office tasks among these
+            // employees — a ticket or task with several assignees must only
+            // count once toward the tile, not once per assignee.
+            var completedTicketCount = await _context.JobTicketAssignments
+                .Where(a => employeeIds.Contains(a.EmployeeID)
+                    && a.JobTicket != null
+                    && (a.JobTicket.Status == JobTicketStatuses.Completed || a.JobTicket.Status == JobTicketStatuses.Closed))
+                .Select(a => a.JobTicketID)
+                .Distinct()
+                .CountAsync();
+
+            var completedTaskCount = await _context.TaskAssignments
+                .Where(a => employeeIds.Contains(a.EmployeeID)
+                    && a.OfficeTask != null
+                    && a.OfficeTask.Status == "Completed")
+                .Select(a => a.OfficeTaskID)
+                .Distinct()
+                .CountAsync();
+
+            CompletedWorkItems = completedTicketCount + completedTaskCount;
 
             Rows = employees.Select(e =>
             {

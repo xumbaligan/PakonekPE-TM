@@ -60,6 +60,7 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             JobTicket.DateCreated = DateTime.Now;
             JobTicket.ServiceDate = DateTime.Now;
+            JobTicket.DateOfCompletion = DateTime.Now;
             NextTicketNumber = await GenerateTicketNumberAsync();
         }
 

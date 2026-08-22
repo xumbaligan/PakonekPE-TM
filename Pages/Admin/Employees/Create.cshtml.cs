@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using TM_PE.Data;
 using TM_PE.Model;
@@ -13,7 +12,7 @@ public class CreateModel : PageModel
     public CreateModel(AppDbContext db) => _db = db;
 
     [BindProperty] public Employee Employee { get; set; } = new() { IsActive = true };
-    public SelectList DepartmentList { get; set; } = default!;
+    public List<Department> AllDepartments { get; set; } = new();
 
     public void OnGet() => LoadLists();
 
@@ -91,6 +90,16 @@ public class CreateModel : PageModel
             );
         }
 
+        // The department must belong to the same role type as the employee
+        var department = await _db.Departments.FindAsync(Employee.DepartmentId);
+        if (department == null || department.RoleType != Employee.RoleType)
+        {
+            ModelState.AddModelError(
+                "Employee.DepartmentId",
+                "Select a department that matches the chosen role type."
+            );
+        }
+
         // If any validation failed
         if (!ModelState.IsValid)
         {
@@ -106,7 +115,10 @@ public class CreateModel : PageModel
     }
 
     private void LoadLists() =>
-        DepartmentList = new SelectList(_db.Departments.ToList(), "DepartmentId", "DepartmentName");
+        AllDepartments = _db.Departments
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.DepartmentName)
+            .ToList();
 }
 
 

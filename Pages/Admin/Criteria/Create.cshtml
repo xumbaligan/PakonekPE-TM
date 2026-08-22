@@ -8,6 +8,7 @@
 <h2 class="mb-4">New Criteria</h2>
 <div class="card p-4" style="max-width:700px">
     <form method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
         <div class="mb-3">
             <label class="form-label">Criteria Name</label>
             <input class="form-control" asp-for="Item.CriteriaName" />
@@ -20,7 +21,7 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Role Type</label>
-                <select class="form-select" asp-for="Item.RoleType">
+                <select class="form-select" asp-for="Item.RoleType" id="roleTypeSelect">
                     <option value="OfficeStaff">Office Staff</option>
                     <option value="FieldTechnician">Field Technician</option>
                 </select>
@@ -36,6 +37,24 @@
                     Weights for the same Role Type should add up to 100.
                 </div>
             </div>
+            @* Only Field Technician criteria can be auto-scored - Office Staff
+               performance has no equivalent job-record metrics, so this stays
+               hidden (and MetricType stays WorkQuality/manual) for them. *@
+            <div class="col-md-6 d-none" id="metricTypeField">
+                <label class="form-label">Scoring Source</label>
+                <select class="form-select" asp-for="Item.MetricType" id="metricTypeSelect">
+                    <option value="WorkQuality">Work Quality (manually rated)</option>
+                    <option value="JobCompletion">Job Completion (auto, from completed jobs)</option>
+                    <option value="Timeliness">Timeliness (auto, from job overdue/on-time record)</option>
+                </select>
+                <div class="form-text">
+                    Job Completion and Timeliness are filled in automatically from the technician's job
+                    ticket record when the manager creates an evaluation, and locked - the manager can't
+                    adjust those stars by hand. Only Work Quality is manually rated. Each of the three can
+                    only be used by one active Field Technician criterion at a time, and their weights
+                    can't add up to more than 100%.
+                </div>
+            </div>
         </div>
         <div class="form-check mt-3 mb-3">
             <input class="form-check-input" type="checkbox" asp-for="Item.IsActive" />
@@ -45,3 +64,33 @@
         <a class="btn btn-secondary" asp-page="Index">Cancel</a>
     </form>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const roleSelect = document.getElementById('roleTypeSelect');
+            const metricField = document.getElementById('metricTypeField');
+            const metricSelect = document.getElementById('metricTypeSelect');
+            const usedMetricTypes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UsedFieldTechnicianMetricTypes));
+
+            function sync() {
+                const isFieldTechnician = roleSelect.value === 'FieldTechnician';
+                metricField.classList.toggle('d-none', !isFieldTechnician);
+                if (!isFieldTechnician) { metricSelect.value = 'WorkQuality'; return; }
+
+                Array.from(metricSelect.options).forEach(function (opt) {
+                    const taken = usedMetricTypes.includes(opt.value);
+                    opt.disabled = taken;
+                    opt.textContent = opt.textContent.replace(' (already used)', '') + (taken ? ' (already used)' : '');
+                });
+                if (metricSelect.selectedOptions[0] && metricSelect.selectedOptions[0].disabled) {
+                    const free = Array.from(metricSelect.options).find(o => !o.disabled);
+                    if (free) metricSelect.value = free.value;
+                }
+            }
+
+            roleSelect.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+}

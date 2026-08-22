@@ -67,6 +67,7 @@
                                         data-roletype="@emp.RoleType"
                                         data-completed="@s.CompletedJobsTasks"
                                         data-ontime="@s.OnTimeRate.ToString("0")"
+                                        data-jobcompletion="@s.JobCompletionRate.ToString("0")"
                                         data-rescheduled="@s.Rescheduled"
                                         data-cancelled="@s.Cancelled"
                                         data-rejected="@s.RejectedActivities"
@@ -261,6 +262,32 @@
                 }
             }
 
+            // Job Completion / Timeliness criteria (see Model.Criteria.MetricType)
+            // are auto-scored from the selected technician's actual job ticket
+            // record instead of starting at 0. Their star-rating widgets are
+            // rendered readonly server-side (_CriteriaStarRows.cshtml), so this
+            // is the only way their value ever changes - the manager can't
+            // adjust them by hand. A rate out of 100 maps to stars out of 5 the
+            // same way EvaluationScoring.StarsFor does server-side (rate / 20),
+            // then snaps to the nearest half star.
+            function autoFillMetricCriteria(card, opt) {
+                card.querySelectorAll('[data-star-input]').forEach(function (container) {
+                    const metricType = container.dataset.metricType;
+                    if (metricType !== 'JobCompletion' && metricType !== 'Timeliness') return;
+
+                    const rate = parseFloat((metricType === 'JobCompletion'
+                        ? opt.dataset.jobcompletion
+                        : opt.dataset.ontime) || '0');
+
+                    const target = document.getElementById(container.dataset.target);
+                    if (!target) return;
+
+                    const stars = window.StarRating.snap(rate / 20);
+                    target.value = stars;
+                    window.StarRating.paint(container, stars);
+                });
+            }
+
             employeeSelect.addEventListener('change', function () {
                 const opt = employeeSelect.options[employeeSelect.selectedIndex];
                 const roleType = opt ? opt.getAttribute('data-roletype') : '';
@@ -276,8 +303,10 @@
                 }
 
                 noEmployeeNotice.classList.add('d-none');
-                setBlockEnabled(ftCard, roleType === 'FieldTechnician');
+                const isFieldTechnician = roleType === 'FieldTechnician';
+                setBlockEnabled(ftCard, isFieldTechnician);
                 setBlockEnabled(osCard, roleType === 'OfficeStaff');
+                if (isFieldTechnician) autoFillMetricCriteria(ftCard, opt);
                 recalcPreview();
             });
 

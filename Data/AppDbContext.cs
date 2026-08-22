@@ -50,6 +50,10 @@ namespace TM_PE.Data
                 .Property(e => e.RoleType)
                 .HasConversion<string>();
 
+            b.Entity<Criteria>()
+                .Property(e => e.MetricType)
+                .HasConversion<string>();
+
             // Managers can't add the same fiber plan name twice.
             b.Entity<FiberPlan>()
                 .HasIndex(f => f.PlanName)

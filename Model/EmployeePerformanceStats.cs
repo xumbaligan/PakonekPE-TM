@@ -18,6 +18,15 @@ namespace TM_PE.Model
         public int Rescheduled { get; set; }
         public int Cancelled { get; set; }
 
+        // Every job ticket ever assigned to this employee (any status), and
+        // how many of those they actually completed - the basis for the
+        // automated "Job Completion" evaluation criterion (see
+        // Model.Criteria.MetricType). Tracked separately from
+        // CompletedJobsTasks/OnTimeEligible above because those also count
+        // completed Office Tasks, which would understate a mixed-role total.
+        public int JobTicketsAssigned { get; set; }
+        public int JobTicketsCompleted { get; set; }
+
         // Office task (Office Staff) specific.
         public int RejectedActivities { get; set; }
         public int OverdueTasks { get; set; }
@@ -25,6 +34,10 @@ namespace TM_PE.Model
         public decimal OnTimeRate => OnTimeEligible == 0
             ? 0
             : Math.Round(OnTimeCount * 100m / OnTimeEligible, 0, MidpointRounding.AwayFromZero);
+
+        public decimal JobCompletionRate => JobTicketsAssigned == 0
+            ? 0
+            : Math.Round(JobTicketsCompleted * 100m / JobTicketsAssigned, 0, MidpointRounding.AwayFromZero);
     }
 
     public static class EmployeePerformanceStatsBuilder
@@ -60,14 +73,27 @@ namespace TM_PE.Model
                 .Select(g => new { JobTicketID = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.JobTicketID, x => x.Count);
 
+            // Distinct tickets per employee (an employee only ever has one
+            // assignment row per ticket, but de-dupe defensively anyway) -
+            // the denominator for JobCompletionRate.
+            var assignedTicketIdsByEmployee = new Dictionary<int, HashSet<int>>();
+
             foreach (var assignment in ticketAssignments)
             {
                 var ticket = assignment.JobTicket!;
                 var s = stats[assignment.EmployeeID];
 
+                if (!assignedTicketIdsByEmployee.TryGetValue(assignment.EmployeeID, out var assignedIds))
+                {
+                    assignedIds = new HashSet<int>();
+                    assignedTicketIdsByEmployee[assignment.EmployeeID] = assignedIds;
+                }
+                assignedIds.Add(ticket.JobTicketID);
+
                 if (ticket.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed)
                 {
                     s.CompletedJobsTasks++;
+                    s.JobTicketsCompleted++;
 
                     if (ticket.DateOfCompletion.HasValue)
                     {
@@ -94,6 +120,11 @@ namespace TM_PE.Model
                 {
                     s.Rescheduled += moved;
                 }
+            }
+
+            foreach (var (employeeId, assignedIds) in assignedTicketIdsByEmployee)
+            {
+                stats[employeeId].JobTicketsAssigned = assignedIds.Count;
             }
 
             // ---------- Office tasks ----------

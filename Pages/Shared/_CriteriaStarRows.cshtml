@@ -46,16 +46,33 @@ else
 
                     <tr>
                         <td>
-                            <div class="fw-semibold">@c.CriteriaName</div>
+                            <div class="fw-semibold">
+                                @c.CriteriaName
+                                @if (c.MetricType != TM_PE.Model.CriteriaMetricType.WorkQuality)
+                                {
+                                    <span class="badge bg-info-subtle text-info-emphasis ms-1">Auto</span>
+                                }
+                            </div>
                             <div class="text-muted small">@c.Description (@c.Weight%)</div>
+                            @if (c.MetricType != TM_PE.Model.CriteriaMetricType.WorkQuality)
+                            {
+                                <div class="text-muted" style="font-size:.75rem">
+                                    Filled in automatically from the technician's job record - not adjustable.
+                                </div>
+                            }
                         </td>
                         <td>
                             <input type="hidden" name="Results.Index" value="@key" />
                             <input type="hidden" name="Results[@key].CriteriaID" value="@c.CriteriaId" />
 
+                            @{
+                                var isAutomated = c.MetricType != TM_PE.Model.CriteriaMetricType.WorkQuality;
+                            }
                             <div class="d-flex align-items-center gap-1">
-                                <div class="star-rating" data-star-input data-target="@starsId"
+                                <div class="star-rating @(isAutomated ? "readonly" : "")" data-star-input data-target="@starsId"
+                                     data-metric-type="@c.MetricType"
                                      aria-label="@c.CriteriaName rating" aria-valuemin="0" aria-valuemax="5"
+                                     aria-readonly="@(isAutomated ? "true" : "false")"
                                      aria-valuenow="@value.ToString("0.#", CultureInfo.InvariantCulture)">
                                     @for (int star = 1; star <= TM_PE.Model.EvaluationScoring.MaxStars; star++)
                                     {

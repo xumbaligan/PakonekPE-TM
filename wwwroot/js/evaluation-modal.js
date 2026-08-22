@@ -59,26 +59,21 @@
                 body.innerHTML = results.map(r => `
                     <tr>
                         <td class="small">${escapeHtml(r.CriteriaName)}<div class="text-muted" style="font-size:.75rem">Weight ${r.Weight}%</div></td>
-                        <td>${window.StarRating.render(r.Stars)}</td>
+                        <td>${window.StarRating.render(r.Stars)}<div class="text-muted" style="font-size:.72rem">${r.Stars} / 5</div></td>
                         <td class="small">${r.Score} / ${r.Weight}</td>
                         <td class="small">${r.Feedback ? escapeHtml(r.Feedback) : '<span class="text-muted">-</span>'}</td>
                     </tr>`).join('');
             }
         }
 
-        // ---- Appraisal recommendations ----
-        const recs = parseJson(d.recommendations);
-        const recBox = document.getElementById('evalRecommendations');
-        if (recBox) {
-            if (recs.length === 0) {
-                recBox.innerHTML = '<div class="text-muted small">No recommendation was added for this evaluation.</div>';
-            } else {
-                recBox.innerHTML = recs.map(r => `
-                    <div class="d-flex align-items-start gap-2 mb-2">
-                        <span class="badge bg-${r.Badge}-subtle text-${r.Badge}-emphasis">${escapeHtml(r.Label)}</span>
-                        <span class="small text-muted">${r.Details ? escapeHtml(r.Details) : ''}</span>
-                    </div>`).join('');
-            }
+        // ---- Appraisal recommendation ----
+        const recBadge = document.getElementById('evalRecommendation');
+        if (recBadge) {
+            const rec = (d.recommendation || '').trim();
+            recBadge.textContent = rec || 'No recommendation';
+            recBadge.className = 'badge ' + (rec && rec !== 'No recommendation'
+                ? 'bg-primary-subtle text-primary-emphasis'
+                : 'bg-secondary-subtle text-secondary-emphasis');
         }
 
         const feedback = document.getElementById('evalFeedback');

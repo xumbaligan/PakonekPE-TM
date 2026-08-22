@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TM_PE.Data;
 
@@ -11,9 +12,11 @@ using TM_PE.Data;
 namespace TM_PE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260821185148_user4")]
+    partial class user4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,7 +60,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("EmployeeID");
 
-                    b.ToTable("tbl_activitysubmission", (string)null);
+                    b.ToTable("tbl_activitysubmission");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Criteria", b =>
@@ -89,7 +92,7 @@ namespace TM_PE.Migrations
 
                     b.HasKey("CriteriaId");
 
-                    b.ToTable("tbl_criteria", (string)null);
+                    b.ToTable("tbl_criteria");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Department", b =>
@@ -119,7 +122,7 @@ namespace TM_PE.Migrations
 
                     b.HasKey("DepartmentId");
 
-                    b.ToTable("tbl_departments", (string)null);
+                    b.ToTable("tbl_departments");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Employee", b =>
@@ -160,7 +163,7 @@ namespace TM_PE.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("tbl_employees", (string)null);
+                    b.ToTable("tbl_employees");
                 });
 
             modelBuilder.Entity("TM_PE.Model.EvaluationResult", b =>
@@ -193,7 +196,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("EvaluationID");
 
-                    b.ToTable("tbl_evaluationresult", (string)null);
+                    b.ToTable("tbl_evaluationresult");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Feedback", b =>
@@ -233,7 +236,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("EvaluationID");
 
-                    b.ToTable("tbl_feedback", (string)null);
+                    b.ToTable("tbl_feedback");
                 });
 
             modelBuilder.Entity("TM_PE.Model.FiberPlan", b =>
@@ -257,7 +260,7 @@ namespace TM_PE.Migrations
                     b.HasIndex("PlanName")
                         .IsUnique();
 
-                    b.ToTable("tbl_fiberplan", (string)null);
+                    b.ToTable("tbl_fiberplan");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicket", b =>
@@ -328,7 +331,7 @@ namespace TM_PE.Migrations
 
                     b.HasKey("JobTicketID");
 
-                    b.ToTable("tbl_jobticket", (string)null);
+                    b.ToTable("tbl_jobticket");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicketAssignment", b =>
@@ -357,7 +360,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("JobTicketID");
 
-                    b.ToTable("tbl_jobticketassignment", (string)null);
+                    b.ToTable("tbl_jobticketassignment");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicketRescheduleHistory", b =>
@@ -397,7 +400,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("JobTicketID");
 
-                    b.ToTable("tbl_jobticketreschedulehistory", (string)null);
+                    b.ToTable("tbl_jobticketreschedulehistory");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicketSubmission", b =>
@@ -441,7 +444,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("SubmissionHistoryID");
 
-                    b.ToTable("tbl_jobticketsubmission", (string)null);
+                    b.ToTable("tbl_jobticketsubmission");
                 });
 
             modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
@@ -471,7 +474,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("JobTicketID");
 
-                    b.ToTable("tbl_jobticketsubmissionhistory", (string)null);
+                    b.ToTable("tbl_jobticketsubmissionhistory");
                 });
 
             modelBuilder.Entity("TM_PE.Model.OfficeTask", b =>
@@ -513,7 +516,7 @@ namespace TM_PE.Migrations
 
                     b.HasKey("OfficeTaskID");
 
-                    b.ToTable("tbl_officetask", (string)null);
+                    b.ToTable("tbl_officetask");
                 });
 
             modelBuilder.Entity("TM_PE.Model.PerformanceEvaluation", b =>
@@ -567,7 +570,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("EmployeeID");
 
-                    b.ToTable("tbl_performanceevaluation", (string)null);
+                    b.ToTable("tbl_performanceevaluation");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Recommendation", b =>
@@ -591,7 +594,7 @@ namespace TM_PE.Migrations
                     b.HasIndex("RecommendationName")
                         .IsUnique();
 
-                    b.ToTable("tbl_recommendation", (string)null);
+                    b.ToTable("tbl_recommendation");
                 });
 
             modelBuilder.Entity("TM_PE.Model.TaskActivity", b =>
@@ -631,7 +634,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("OfficeTaskID");
 
-                    b.ToTable("tbl_taskactivity", (string)null);
+                    b.ToTable("tbl_taskactivity");
                 });
 
             modelBuilder.Entity("TM_PE.Model.TaskAssignment", b =>
@@ -657,7 +660,7 @@ namespace TM_PE.Migrations
 
                     b.HasIndex("OfficeTaskID");
 
-                    b.ToTable("tbl_taskassignment", (string)null);
+                    b.ToTable("tbl_taskassignment");
                 });
 
             modelBuilder.Entity("TM_PE.Model.UserAccount", b =>
@@ -701,7 +704,7 @@ namespace TM_PE.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("tbl_useraccount", (string)null);
+                    b.ToTable("tbl_useraccount");
                 });
 
             modelBuilder.Entity("TM_PE.Model.ActivitySubmission", b =>

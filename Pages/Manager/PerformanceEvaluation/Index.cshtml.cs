@@ -23,7 +23,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             var query = _context.PerformanceEvaluations
                 .Include(e => e.Employee)
                 .Include(e => e.Results).ThenInclude(r => r.Criteria)
-                .Include(e => e.Recommendations)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(StatusFilter) &&
@@ -52,16 +51,9 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         {
             public string CriteriaName { get; set; } = string.Empty;
             public decimal Weight { get; set; }
-            public int Stars { get; set; }
+            public decimal Stars { get; set; }
             public decimal Score { get; set; }
             public string? Feedback { get; set; }
-        }
-
-        public class RecommendationView
-        {
-            public string Label { get; set; } = string.Empty;
-            public string Badge { get; set; } = "secondary";
-            public string? Details { get; set; }
         }
 
         // Shared by the Index modal and the Appraisal Records details modal so
@@ -76,17 +68,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                     Stars = r.StarRating,
                     Score = r.Score,
                     Feedback = r.Feedback
-                })
-                .ToList();
-
-        public static List<RecommendationView> BuildRecommendationViews(Model.PerformanceEvaluation e) =>
-            e.Recommendations
-                .OrderBy(r => r.EvaluationRecommendationID)
-                .Select(r => new RecommendationView
-                {
-                    Label = EvaluationRecommendation.RecommendationLabel(r.Recommendation),
-                    Badge = EvaluationRecommendation.RecommendationBadgeClass(r.Recommendation),
-                    Details = r.Details
                 })
                 .ToList();
     }

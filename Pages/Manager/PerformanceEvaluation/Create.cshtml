@@ -103,60 +103,35 @@
             @* ===================== Field Technician criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="fieldTechnicianCriteriaCard">
                 <h5 class="mb-1">Field Technician Criteria</h5>
-                <div class="text-muted small mb-3">Rate each criterion from 1 to 5 stars. Click the same star again to clear it.</div>
+                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 5 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
                 <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.FieldTechnicianCriteria)" />
             </div>
 
             @* ===================== Office Staff criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="officeStaffCriteriaCard">
                 <h5 class="mb-1">Office Staff Criteria</h5>
-                <div class="text-muted small mb-3">Rate each criterion from 1 to 5 stars. Click the same star again to clear it.</div>
+                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 5 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
                 <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.OfficeStaffCriteria)" />
             </div>
 
-            @* ===================== Appraisal recommendations ===================== *@
+            @* ===================== Appraisal recommendation ===================== *@
             <div class="card p-4 mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">Appraisal Recommendation</h5>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="addRecommendationBtn">
-                        <i class="bi bi-plus-lg"></i> Add Recommendation
+                <label class="form-label fw-semibold">Recommendation</label>
+                <div class="d-flex gap-2">
+                    <select asp-for="Evaluation.Recommendation" id="recommendationSelect" class="form-select">
+                        <option value="">No recommendation</option>
+                        @foreach (var rec in Model.RecommendationOptions)
+                        {
+                            <option value="@rec.RecommendationName">@rec.RecommendationName</option>
+                        }
+                    </select>
+                    <button type="button" class="btn btn-outline-primary text-nowrap"
+                            data-bs-toggle="modal" data-bs-target="#recommendationModal">
+                        + Add Recommendation
                     </button>
                 </div>
-                <div id="recommendationList">
-                    @* Re-rendered on a validation postback so nothing the manager already added is lost. *@
-                    @for (int i = 0; i < Model.Recommendations.Count; i++)
-                    {
-                        var key = $"p{i}";
-                        var rec = Model.Recommendations[i];
-                        <div class="border rounded p-3 mb-2 recommendation-row">
-                            <input type="hidden" name="Recommendations.Index" value="@key" />
-                            <div class="row g-2 align-items-start">
-                                <div class="col-md-5">
-                                    <label class="form-label small fw-semibold mb-1">Recommendation</label>
-                                    <select class="form-select form-select-sm" name="Recommendations[@key].Recommendation">
-                                        @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
-                                        {
-                                            <option value="@r" selected="@(r == rec.Recommendation)">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
-                                    <input type="text" class="form-control form-control-sm" maxlength="500"
-                                           name="Recommendations[@key].Details" value="@rec.Details" />
-                                </div>
-                                <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-                <div class="text-muted small" id="noRecommendationNotice">
-                    No recommendations added. Use <strong>Add Recommendation</strong> if this evaluation calls for one.
-                </div>
+                <span asp-validation-for="Evaluation.Recommendation" class="text-danger"></span>
+                <div class="form-text">Manage the list of available recommendations with the button above.</div>
             </div>
 
             <div class="card p-4">
@@ -194,36 +169,11 @@
     </div>
 </form>
 
-@* Template cloned by the Add Recommendation button. *@
-<template id="recommendationTemplate">
-    <div class="border rounded p-3 mb-2 recommendation-row">
-        <input type="hidden" name="Recommendations.Index" value="__KEY__" />
-        <div class="row g-2 align-items-start">
-            <div class="col-md-5">
-                <label class="form-label small fw-semibold mb-1">Recommendation</label>
-                <select class="form-select form-select-sm" name="Recommendations[__KEY__].Recommendation">
-                    @foreach (var r in Enum.GetValues<TM_PE.Model.AppraisalRecommendation>())
-                    {
-                        <option value="@r">@TM_PE.Model.EvaluationRecommendation.RecommendationLabel(r)</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label small fw-semibold mb-1">Details <span class="text-muted fw-normal">(optional)</span></label>
-                <input type="text" class="form-control form-control-sm" maxlength="500"
-                       name="Recommendations[__KEY__].Details" placeholder="Why this recommendation..." />
-            </div>
-            <div class="col-md-1 d-flex align-items-end justify-content-end" style="padding-top:1.6rem">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-recommendation" title="Remove">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-</template>
+<partial name="_RecommendationModal" model="Model.RecommendationOptions" />
 
 @section Scripts {
     <script src="~/js/star-rating.js"></script>
+    <script src="~/js/recommendation-modal.js"></script>
     <script>
         (function () {
             const employeeSelect = document.getElementById('employeeSelect');
@@ -259,8 +209,8 @@
                 let total = 0;
                 document.querySelectorAll('.star-value-input:not(:disabled)').forEach(input => {
                     const weight = parseFloat(input.dataset.weight || '0');
-                    const stars = parseInt(input.value || '0', 10) || 0;
-                    total += weight * Math.min(Math.max(stars, 0), 5) / 5;
+                    const stars = window.StarRating.snap(input.value || '0');
+                    total += weight * stars / 5;
                 });
                 scorePreview.textContent = total.toFixed(1);
                 ratingPreview.textContent = ratingFor(total);
@@ -299,31 +249,6 @@
                 if (e.target.classList.contains('star-value-input')) recalcPreview();
             });
 
-            // ---- Add Recommendation ----
-            const recList = document.getElementById('recommendationList');
-            const recNotice = document.getElementById('noRecommendationNotice');
-            const recTemplate = document.getElementById('recommendationTemplate').innerHTML;
-            let recCounter = 0;
-
-            function refreshRecNotice() {
-                recNotice.classList.toggle('d-none', recList.children.length > 0);
-            }
-
-            document.getElementById('addRecommendationBtn').addEventListener('click', function () {
-                const key = 'r' + (recCounter++);
-                const wrapper = document.createElement('div');
-                wrapper.innerHTML = recTemplate.replaceAll('__KEY__', key);
-                recList.appendChild(wrapper.firstElementChild);
-                refreshRecNotice();
-            });
-
-            recList.addEventListener('click', function (e) {
-                const btn = e.target.closest('.remove-recommendation');
-                if (!btn) return;
-                btn.closest('.recommendation-row').remove();
-                refreshRecNotice();
-            });
-
             // Initial state (also covers a validation-failure postback).
             window.StarRating.initAll(document);
             setBlockEnabled(ftCard, false);
@@ -334,7 +259,6 @@
                 applyStats(null);
                 recalcPreview();
             }
-            refreshRecNotice();
         })();
     </script>
 }

@@ -90,7 +90,10 @@
                                 <div class="fw-semibold">@(r.Criteria?.CriteriaName ?? "-")</div>
                                 <div class="text-muted small">Weight @(r.Criteria?.Weight ?? 0)%</div>
                             </td>
-                            <td><partial name="_Stars" model="(decimal)r.StarRating" /></td>
+                            <td>
+                                <partial name="_Stars" model="r.StarRating" />
+                                <div class="text-muted small">@r.StarRating.ToString("0.#") / 5</div>
+                            </td>
                             <td>@r.Score.ToString("0.##") / @(r.Criteria?.Weight ?? 0)</td>
                             <td class="text-muted">@(string.IsNullOrEmpty(r.Feedback) ? "-" : r.Feedback)</td>
                         </tr>
@@ -104,23 +107,14 @@
 <div class="row g-4">
     <div class="col-lg-6">
         <div class="card p-4 h-100">
-            <h5 class="mb-3">Appraisal Recommendations</h5>
-            @if (!e.Recommendations.Any())
+            <h5 class="mb-3">Appraisal Recommendation</h5>
+            @if (string.IsNullOrWhiteSpace(e.Recommendation))
             {
                 <div class="text-muted small">No recommendation was added for this evaluation.</div>
             }
             else
             {
-                @foreach (var rec in e.Recommendations.OrderBy(r => r.EvaluationRecommendationID))
-                {
-                    var badge = TM_PE.Model.EvaluationRecommendation.RecommendationBadgeClass(rec.Recommendation);
-                    <div class="d-flex align-items-start gap-2 mb-2">
-                        <span class="badge bg-@(badge)-subtle text-@(badge)-emphasis">
-                            @TM_PE.Model.EvaluationRecommendation.RecommendationLabel(rec.Recommendation)
-                        </span>
-                        <span class="small text-muted">@rec.Details</span>
-                    </div>
-                }
+                <div><span class="badge bg-primary-subtle text-primary-emphasis fs-6">@e.Recommendation</span></div>
             }
         </div>
     </div>

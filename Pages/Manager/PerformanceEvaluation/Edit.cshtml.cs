@@ -6,10 +6,9 @@ using TM_PE.Model;
 
 namespace TM_PE.Pages.Manager.PerformanceEvaluation
 {
-    // Editing an evaluation only ever touches tbl_performanceevaluation /
-    // tbl_evaluationresult / tbl_evaluationrecommendation - it never writes back
-    // into JobTicket or OfficeTask. Once an evaluation is Finalized it's locked;
-    // only a Draft can be edited.
+    // Editing an evaluation only ever touches tbl_performanceevaluation and
+    // tbl_evaluationresult - it never writes back into JobTicket or OfficeTask.
+    // Once an evaluation is Finalized it's locked; only a Draft can be edited.
     public class EditModel : PageModel
     {
         private readonly AppDbContext _context;
@@ -21,12 +20,13 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         [BindProperty]
         public List<CreateModel.ResultInput> Results { get; set; } = new();
 
-        [BindProperty]
-        public List<CreateModel.RecommendationInput> Recommendations { get; set; } = new();
-
         public Employee? Employee { get; set; }
         public List<CriteriaStarRow> Rows { get; set; } = new();
         public EmployeePerformanceStats Stats { get; set; } = new();
+
+        // The manager-maintained recommendation list backing the dropdown and
+        // the "Recommendations" modal.
+        public List<TM_PE.Model.Recommendation> RecommendationOptions { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
@@ -37,15 +37,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             Evaluation = evaluation;
             Employee = evaluation.Employee;
-
-            Recommendations = evaluation.Recommendations
-                .OrderBy(r => r.EvaluationRecommendationID)
-                .Select(r => new CreateModel.RecommendationInput
-                {
-                    Recommendation = r.Recommendation,
-                    Details = r.Details
-                })
-                .ToList();
 
             await LoadReferenceDataAsync(evaluation, useExistingScores: true);
             return Page();
@@ -69,9 +60,11 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.OverallScore");
             ModelState.Remove("Evaluation.OverallRating");
             ModelState.Remove("Evaluation.EvaluatorName");
-            // Shown read-only on the form, so it is never posted back.
             ModelState.Remove("Evaluation.EvaluationPeriod");
             ModelState.Remove("Evaluation.EvaluationStatus");
+            ModelState.Remove("Evaluation.Recommendation");
+
+            var recommendation = await ResolveRecommendationAsync(Evaluation.Recommendation);
 
             if (!ModelState.IsValid)
             {
@@ -86,12 +79,10 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .ToListAsync();
             var allowedIds = allowedCriteria.ToDictionary(c => c.CriteriaId);
 
-            // Employee, Evaluator and Evaluation Period are fixed at creation -
-            // this only updates the date/scores/feedback/recommendations and
-            // which button was pressed (Draft vs Finalized).
             evaluation.EvaluationDate = Evaluation.EvaluationDate;
             evaluation.GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim();
             evaluation.EvaluationStatus = status;
+            evaluation.Recommendation = recommendation;
 
             _context.EvaluationResults.RemoveRange(evaluation.Results);
             evaluation.Results.Clear();
@@ -101,7 +92,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             {
                 if (!allowedIds.TryGetValue(r.CriteriaID, out var criteria)) continue;
 
-                var stars = Math.Clamp(r.StarRating, 0, EvaluationScoring.MaxStars);
+                var stars = EvaluationScoring.NormalizeStars(r.StarRating);
                 var score = EvaluationScoring.ScoreFor(stars, criteria.Weight);
                 overallScore += score;
 
@@ -114,21 +105,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 });
             }
 
-            // Recommendations are rebuilt from what's on the form, so removing a
-            // row in the UI actually removes it.
-            _context.EvaluationRecommendations.RemoveRange(evaluation.Recommendations);
-            evaluation.Recommendations.Clear();
-
-            foreach (var rec in Recommendations)
-            {
-                evaluation.Recommendations.Add(new EvaluationRecommendation
-                {
-                    Recommendation = rec.Recommendation,
-                    Details = string.IsNullOrWhiteSpace(rec.Details) ? null : rec.Details.Trim(),
-                    DateCreated = DateTime.Now
-                });
-            }
-
             evaluation.OverallScore = overallScore;
             evaluation.OverallRating = EvaluationScoring.RatingFor(overallScore);
 
@@ -136,15 +112,41 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             return RedirectToPage("Details", new { id = evaluation.EvaluationID });
         }
 
+
+        // A recommendation is stored as text, but it still has to be one the
+        // manager actually put on the list - never free text from the wire.
+        private async Task<string?> ResolveRecommendationAsync(string? posted)
+        {
+            var name = (posted ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(name)) return null;
+
+            if (!await _context.Recommendations.AnyAsync(r => r.RecommendationName == name))
+            {
+                ModelState.AddModelError("Evaluation.Recommendation", "Please select a valid recommendation.");
+                return null;
+            }
+
+            return name;
+        }
+
+        public async Task<IActionResult> OnPostAddRecommendationAsync(string recommendationName) =>
+            await RecommendationListActions.AddAsync(_context, recommendationName);
+
+        public async Task<IActionResult> OnPostDeleteRecommendationAsync(int id) =>
+            await RecommendationListActions.DeleteAsync(_context, id);
+
         private Task<Model.PerformanceEvaluation?> LoadEvaluationAsync(int id) =>
             _context.PerformanceEvaluations
                 .Include(e => e.Employee)
                 .Include(e => e.Results)
-                .Include(e => e.Recommendations)
                 .FirstOrDefaultAsync(e => e.EvaluationID == id);
 
         private async Task LoadReferenceDataAsync(Model.PerformanceEvaluation evaluation, bool useExistingScores)
         {
+            RecommendationOptions = await _context.Recommendations
+                .OrderBy(r => r.RecommendationID)
+                .ToListAsync();
+
             if (evaluation.Employee == null) { Rows = new(); return; }
 
             Stats = await EmployeePerformanceStatsBuilder.BuildForAsync(_context, evaluation.EmployeeID);

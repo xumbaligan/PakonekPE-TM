@@ -29,11 +29,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         [BindProperty]
         public List<ResultInput> Results { get; set; } = new();
 
-        // Same technique: recommendation rows are added/removed client-side, so
-        // their indices are stable keys instead of positions.
-        [BindProperty]
-        public List<RecommendationInput> Recommendations { get; set; } = new();
-
         // Only Field Technicians / Office Staff can be evaluated - Admin and
         // Manager accounts are excluded from the picker.
         public List<Employee> EmployeeList { get; set; } = new();
@@ -46,6 +41,10 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         // Completed / on-time / rescheduled / cancelled counts shown at the top
         // of the page, so the manager can see actual performance while rating.
         public Dictionary<int, EmployeePerformanceStats> Stats { get; set; } = new();
+
+        // The manager-maintained recommendation list backing the dropdown and
+        // the "Recommendations" modal.
+        public List<TM_PE.Model.Recommendation> RecommendationOptions { get; set; } = new();
 
         public string CurrentManagerName { get; set; } = "Manager";
 
@@ -67,14 +66,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         public class ResultInput
         {
             public int CriteriaID { get; set; }
-            public int StarRating { get; set; }
+            public decimal StarRating { get; set; }
             public string? Feedback { get; set; }
-        }
-
-        public class RecommendationInput
-        {
-            public AppraisalRecommendation Recommendation { get; set; }
-            public string? Details { get; set; }
         }
 
         public async Task OnGetAsync()
@@ -101,6 +94,9 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.EvaluatorName");
             ModelState.Remove("Evaluation.EvaluationStatus");
 
+            // Only accept a recommendation that's actually on the managed list.
+            var recommendation = await ResolveRecommendationAsync(Evaluation.Recommendation);
+
             if (!ModelState.IsValid || employee == null)
             {
                 await LoadReferenceDataAsync();
@@ -126,6 +122,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim(),
                 // Status comes from which button was pressed, not a dropdown.
                 EvaluationStatus = status,
+                Recommendation = recommendation,
                 DateCreated = DateTime.Now
             };
 
@@ -136,7 +133,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
                 // Clamp server-side: stars can only ever be 0-5, and the points
                 // they translate into are capped by that criterion's weight.
-                var stars = Math.Clamp(r.StarRating, 0, EvaluationScoring.MaxStars);
+                // Snap server-side: a hand-crafted POST can never store 3.7 stars.
+                var stars = EvaluationScoring.NormalizeStars(r.StarRating);
                 var score = EvaluationScoring.ScoreFor(stars, criteria.Weight);
                 overallScore += score;
 
@@ -149,16 +147,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 });
             }
 
-            foreach (var rec in Recommendations)
-            {
-                evaluation.Recommendations.Add(new EvaluationRecommendation
-                {
-                    Recommendation = rec.Recommendation,
-                    Details = string.IsNullOrWhiteSpace(rec.Details) ? null : rec.Details.Trim(),
-                    DateCreated = DateTime.Now
-                });
-            }
-
             evaluation.OverallScore = overallScore;
             evaluation.OverallRating = EvaluationScoring.RatingFor(overallScore);
 
@@ -167,6 +155,35 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             return RedirectToPage("Details", new { id = evaluation.EvaluationID });
         }
+
+
+        // A recommendation is stored as text, but it still has to be one the
+        // manager actually put on the list - never free text from the wire.
+        private async Task<string?> ResolveRecommendationAsync(string? posted)
+        {
+            var name = (posted ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(name)) return null;
+
+            if (!await _context.Recommendations.AnyAsync(r => r.RecommendationName == name))
+            {
+                ModelState.AddModelError("Evaluation.Recommendation", "Please select a valid recommendation.");
+                return null;
+            }
+
+            return name;
+        }
+
+        // Adds an entry to the manager-maintained recommendation list (see the
+        // "Recommendations" modal). Called via AJAX; returns JSON rather than
+        // redirecting since it doesn't touch the evaluation form itself.
+        public async Task<IActionResult> OnPostAddRecommendationAsync(string recommendationName) =>
+            await RecommendationListActions.AddAsync(_context, recommendationName);
+
+        // Removes an entry from the list. Evaluations that already used it keep
+        // their Recommendation text untouched - it's stored on the evaluation,
+        // not as a foreign key.
+        public async Task<IActionResult> OnPostDeleteRecommendationAsync(int id) =>
+            await RecommendationListActions.DeleteAsync(_context, id);
 
         private string GetCurrentManagerName() =>
             HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
@@ -192,6 +209,10 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             Stats = await EmployeePerformanceStatsBuilder.BuildAsync(
                 _context, EmployeeList.Select(e => e.EmployeeId));
+
+            RecommendationOptions = await _context.Recommendations
+                .OrderBy(r => r.RecommendationID)
+                .ToListAsync();
         }
     }
 }

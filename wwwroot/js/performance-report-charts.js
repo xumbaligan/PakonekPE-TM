@@ -1,0 +1,129 @@
+﻿// Charts for the Performance Report.
+//
+// The data comes from the <script type="application/json" id="reportChartData">
+// block the page renders, so nothing here depends on Razor interpolating values
+// into JavaScript.
+//
+// Every failure path shows a message inside the chart card instead of leaving a
+// blank canvas: an empty report, a blocked Chart.js CDN, and a bad payload all
+// say so plainly.
+(function () {
+    const dataEl = document.getElementById('reportChartData');
+    if (!dataEl) return;
+
+    function showMessage(id, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        el.classList.remove('d-none');
+
+        // Hide the empty canvas so the card doesn't show a blank box next to
+        // the explanation.
+        const canvas = el.parentElement.querySelector('canvas');
+        if (canvas) canvas.classList.add('d-none');
+    }
+
+    let payload;
+    try {
+        payload = JSON.parse(dataEl.textContent);
+    } catch (err) {
+        console.error('Performance Report: could not parse chart data.', err);
+        showMessage('scoreByEmployeeMessage', 'Chart data could not be read.');
+        showMessage('ratingDistributionMessage', 'Chart data could not be read.');
+        return;
+    }
+
+    const scoreData = payload.scoreByEmployee || [];
+    const ratingData = payload.ratingDistribution || [];
+
+    // Chart.js is loaded from a CDN, so an offline machine or a blocked network
+    // shows up here rather than as two empty boxes.
+    if (typeof Chart === 'undefined') {
+        console.error('Performance Report: Chart.js failed to load (CDN blocked or offline).');
+        const msg = 'Charts could not load. Check your internet connection and refresh.';
+        showMessage('scoreByEmployeeMessage', msg);
+        showMessage('ratingDistributionMessage', msg);
+        return;
+    }
+
+    const emptyMsg = 'No evaluations match the current filters, so there is nothing to chart yet.';
+
+    // ---- Bar chart: average score per employee ----
+    if (scoreData.length === 0) {
+        showMessage('scoreByEmployeeMessage', emptyMsg);
+    } else {
+        new Chart(document.getElementById('scoreByEmployeeChart'), {
+            type: 'bar',
+            data: {
+                labels: scoreData.map(d => d.Label),
+                datasets: [{
+                    label: 'Average Score',
+                    data: scoreData.map(d => Number(d.Value)),
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 6,
+                    maxBarThickness: 48
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Score out of 100' }
+                    },
+                    x: {
+                        ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+                    }
+                }
+            }
+        });
+    }
+
+    // ---- Pie chart: rating distribution ----
+    if (ratingData.length === 0) {
+        showMessage('ratingDistributionMessage', emptyMsg);
+    } else {
+        // Same colours the rating badges use, so the chart and the table read
+        // as one report.
+        const ratingColors = {
+            'Excellent': '#198754',
+            'Very Good': '#0d6efd',
+            'Good': '#0dcaf0',
+            'Needs Improvement': '#ffc107',
+            'Poor': '#dc3545'
+        };
+
+        new Chart(document.getElementById('ratingDistributionChart'), {
+            type: 'pie',
+            data: {
+                labels: ratingData.map(d => d.Label),
+                datasets: [{
+                    data: ratingData.map(d => Number(d.Value)),
+                    backgroundColor: ratingData.map(d => ratingColors[d.Label] || '#6c757d'),
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total ? Math.round(ctx.parsed * 100 / total) : 0;
+                                const noun = ctx.parsed === 1 ? 'employee' : 'employees';
+                                return ctx.label + ': ' + ctx.parsed + ' ' + noun + ' (' + pct + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+})();

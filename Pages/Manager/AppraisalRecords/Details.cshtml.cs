@@ -58,7 +58,6 @@ namespace TM_PE.Pages.Manager.AppraisalRecords
 
             Evaluations = await _context.PerformanceEvaluations
                 .Include(e => e.Results).ThenInclude(r => r.Criteria)
-                .Include(e => e.Recommendations)
                 .Where(e => e.EmployeeID == id)
                 .OrderByDescending(e => e.EvaluationDate)
                 .ThenByDescending(e => e.EvaluationID)

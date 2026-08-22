@@ -54,7 +54,6 @@
                     @foreach (var e in Model.Evaluations)
                     {
                         var results = IndexModel.BuildResultViews(e);
-                        var recommendations = IndexModel.BuildRecommendationViews(e);
 
                         <tr>
                             <td>
@@ -92,7 +91,7 @@
                                         data-status="@e.EvaluationStatus"
                                         data-feedback="@e.GeneralFeedback"
                                         data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
-                                        data-recommendations="@System.Text.Json.JsonSerializer.Serialize(recommendations)"
+                                        data-recommendation="@e.RecommendationDisplay"
                                         title="View full evaluation">
                                     <i class="bi bi-eye"></i>
                                 </button>

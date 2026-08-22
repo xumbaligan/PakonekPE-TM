@@ -71,45 +71,100 @@ body {
 }
 
 /* ===================== Star rating (Performance Evaluation) ===================== */
+/*
+   Each star is an outlined star with a filled blue star layered on top, clipped
+   to 0%, 50% or 100% width. That's what makes a true half star possible
+   without a second icon set.
+*/
 .star-rating {
     display: inline-flex;
+    align-items: center;
     gap: .15rem;
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     line-height: 1;
+    user-select: none;
 }
 
     .star-rating .star {
-        color: #d7dbe3;
-        cursor: pointer;
-        transition: color .12s ease, transform .12s ease;
-        background: none;
-        border: 0;
-        padding: 0;
+        position: relative;
+        display: inline-block;
+        width: 1em;
+        height: 1em;
     }
 
-        .star-rating .star.filled {
-            color: #f5a524;
+    .star-rating .star-bg,
+    .star-rating .star-fg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 1em;
+        line-height: 1;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .star-rating .star-bg {
+        width: 1em;
+        color: #cbd5e1;
+    }
+
+    /* Width is set inline to 0 / 50% / 100% - this is the blue fill. */
+    .star-rating .star-fg {
+        width: 0;
+        color: #0d6efd;
+        transition: width .08s linear;
+    }
+
+        .star-rating .star-bg i,
+        .star-rating .star-fg i {
+            display: block;
+            width: 1em;
+            font-size: inherit;
         }
 
-        .star-rating .star:hover {
-            transform: scale(1.12);
+    /* Interactive variant */
+    .star-rating[data-star-input] {
+        cursor: pointer;
+    }
+
+        .star-rating[data-star-input]:hover .star-fg {
+            color: #3d8bfd;
         }
 
-    .star-rating.readonly .star {
+    .star-rating.readonly {
         cursor: default;
     }
-
-        .star-rating.readonly .star:hover {
-            transform: none;
-        }
 
     .star-rating.sm {
         font-size: 1rem;
     }
 
+    .star-rating.lg {
+        font-size: 1.9rem;
+    }
+
 .star-value-label {
     font-size: .8rem;
     color: #64748b;
+}
+
+.star-clear-btn {
+    border: 0;
+    background: none;
+    color: #94a3b8;
+    font-size: .8rem;
+    padding: 0 .25rem;
+    line-height: 1;
+}
+
+    .star-clear-btn:hover {
+        color: #dc3545;
+    }
+
+@media (max-width: 575.98px) {
+    .star-rating {
+        font-size: 1.3rem;
+    }
 }
 
 /* ===================== Stat tiles ===================== */
@@ -144,3 +199,22 @@ body {
         justify-content: center;
         font-size: 1.1rem;
     }
+
+/* ===================== Report charts ===================== */
+/* Chart.js needs a sized, positioned parent to render into. */
+.chart-box {
+    position: relative;
+    height: 340px;
+}
+
+.chart-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 1rem;
+    color: #64748b;
+    font-size: .9rem;
+}

@@ -178,7 +178,6 @@
                     @foreach (var e in Model.Evaluations)
                     {
                         var results = TM_PE.Pages.Manager.PerformanceEvaluation.IndexModel.BuildResultViews(e);
-                        var recommendations = TM_PE.Pages.Manager.PerformanceEvaluation.IndexModel.BuildRecommendationViews(e);
                         var rowClass = TM_PE.Model.EvaluationScoring.RatingBadgeClass(e.OverallRating);
 
                         <tr data-year="@e.EvaluationDate.Year">
@@ -217,7 +216,7 @@
                                         data-status="@e.EvaluationStatus"
                                         data-feedback="@e.GeneralFeedback"
                                         data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
-                                        data-recommendations="@System.Text.Json.JsonSerializer.Serialize(recommendations)"
+                                        data-recommendation="@e.RecommendationDisplay"
                                         title="View full evaluation">
                                     <i class="bi bi-eye"></i>
                                 </button>

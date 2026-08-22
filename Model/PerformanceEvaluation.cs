@@ -12,14 +12,14 @@ namespace TM_PE.Model
     // A Performance Evaluation is its own historical record. Creating, editing,
     // or finalizing an evaluation never writes back to JobTicket or OfficeTask.
     //
-    // Scoring is star-based: the manager awards 1-5 stars per criterion and the
-    // system converts that into weighted points (see EvaluationScoring), so the
-    // Overall Score still lands out of 100.
+    // Scoring is star-based: the manager awards 0.5-5 stars per criterion and
+    // the system converts that into weighted points (see EvaluationScoring), so
+    // the Overall Score still lands out of 100.
     //
     // The appraisal decision lives directly on the evaluation instead of being a
     // separate module: one Evaluation Date (also the appraisal date), one Status
-    // (also the appraisal status), one Feedback field, and a list of
-    // manager-added Recommendations.
+    // (also the appraisal status), one Feedback field, and one Recommendation
+    // chosen from the manager-maintained list.
     [Table("tbl_performanceevaluation")]
     public class PerformanceEvaluation
     {
@@ -58,10 +58,16 @@ namespace TM_PE.Model
         [StringLength(50)]
         public string OverallRating { get; set; } = string.Empty;
 
-        // Renamed from GeneralRemarks - the manager's written feedback for this
-        // evaluation period.
+        // The manager's written feedback for this evaluation period.
         [StringLength(1000)]
         public string? GeneralFeedback { get; set; }
+
+        // The appraisal recommendation, picked from the manager-maintained list
+        // in tbl_recommendation. Stored as the recommendation's text rather than
+        // a foreign key (exactly like JobTicket.FiberPlan), so removing an entry
+        // from that list never rewrites evaluations that already used it.
+        [StringLength(RecommendationRules.MaxLength)]
+        public string? Recommendation { get; set; }
 
         [Column(TypeName = "nvarchar(20)")]
         public EvaluationStatus EvaluationStatus { get; set; } = EvaluationStatus.Draft;
@@ -71,11 +77,6 @@ namespace TM_PE.Model
         // Performance Evaluation -> Evaluation Results -> Criteria
         public ICollection<EvaluationResult> Results { get; set; } = new List<EvaluationResult>();
 
-        // Manager-added appraisal recommendations. Replaces the old fixed
-        // Salary Adjustment / Promotion / Training checkboxes: the manager now
-        // adds as many (or as few) recommendations as the situation calls for.
-        public ICollection<EvaluationRecommendation> Recommendations { get; set; } = new List<EvaluationRecommendation>();
-
         // Overall Score expressed back as stars out of 5, for star displays.
         [NotMapped]
         public decimal OverallStars => EvaluationScoring.StarsFor(OverallScore);
@@ -83,14 +84,9 @@ namespace TM_PE.Model
         [NotMapped]
         public bool IsFinalized => EvaluationStatus == EvaluationStatus.Finalized;
 
-        // Short one-line summary used in tables and modals.
-        public string RecommendationSummary()
-        {
-            if (Recommendations == null || Recommendations.Count == 0) return "No recommendation";
-            return string.Join(", ", Recommendations
-                .OrderBy(r => r.EvaluationRecommendationID)
-                .Select(r => EvaluationRecommendation.RecommendationLabel(r.Recommendation)));
-        }
+        [NotMapped]
+        public string RecommendationDisplay =>
+            string.IsNullOrWhiteSpace(Recommendation) ? "No recommendation" : Recommendation;
     }
 
     // One scored criterion within a Performance Evaluation.
@@ -112,9 +108,11 @@ namespace TM_PE.Model
         [ForeignKey(nameof(CriteriaID))]
         public Criteria? Criteria { get; set; }
 
-        // What the manager actually clicked: 0-5 stars for this criterion.
-        [Range(0, EvaluationScoring.MaxStars)]
-        public int StarRating { get; set; }
+        // What the manager actually clicked: 0-5 stars in half-star steps, so
+        // 3.5 is a real, storable rating. decimal(2,1) is exactly wide enough.
+        [Range(typeof(decimal), "0", "5", ErrorMessage = "Rating must be between 0 and 5 stars.")]
+        [Column(TypeName = "decimal(2,1)")]
+        public decimal StarRating { get; set; }
 
         // Points earned for this criterion, derived from StarRating and the
         // criterion's Weight (weights for a RoleType add up to 100, so the
@@ -124,7 +122,6 @@ namespace TM_PE.Model
         [Column(TypeName = "decimal(5,2)")]
         public decimal Score { get; set; }
 
-        // Renamed from Remarks.
         [StringLength(500)]
         public string? Feedback { get; set; }
     }
@@ -136,16 +133,38 @@ namespace TM_PE.Model
     {
         public const int MaxStars = 5;
 
-        // A criterion worth 25% rated 4/5 stars earns 20 of its 25 points.
-        public static decimal ScoreFor(int stars, decimal weight)
+        // Ratings move in half-star steps.
+        public const decimal StarStep = 0.5m;
+
+        // Snaps any incoming value onto the nearest valid half-star in 0..5, so
+        // a hand-crafted POST can never store 3.7 stars.
+        public static decimal NormalizeStars(decimal stars)
         {
-            var clamped = Math.Clamp(stars, 0, MaxStars);
-            return Math.Round(weight * clamped / MaxStars, 2, MidpointRounding.AwayFromZero);
+            var clamped = Math.Clamp(stars, 0m, MaxStars);
+            return Math.Round(clamped / StarStep, 0, MidpointRounding.AwayFromZero) * StarStep;
         }
 
-        // Turns an out-of-100 score back into stars out of 5.
+        // A criterion worth 25% rated 3.5/5 stars earns 17.50 of its 25 points.
+        public static decimal ScoreFor(decimal stars, decimal weight) =>
+            Math.Round(weight * NormalizeStars(stars) / MaxStars, 2, MidpointRounding.AwayFromZero);
+
+        // Turns an out-of-100 score back into stars out of 5. Not snapped to
+        // half-steps: this is an averaged display value, and the star widget
+        // renders partial fills anyway.
         public static decimal StarsFor(decimal scoreOutOf100) =>
             Math.Round(Math.Clamp(scoreOutOf100, 0, 100) / 20m, 2, MidpointRounding.AwayFromZero);
+
+        // How much of star `starIndex` (1-based) should be filled, as a
+        // percentage. 3.5 stars gives 100/100/100/50/0 across the five stars.
+        // Lives here so the Razor partials don't each need their own copy -
+        // a @functions block in a partial gets emitted twice and collides.
+        public static decimal StarFillPercent(decimal value, int starIndex)
+        {
+            var filled = Math.Clamp(value, 0m, MaxStars) - (starIndex - 1);
+            if (filled >= 1m) return 100m;
+            if (filled <= 0m) return 0m;
+            return filled * 100m;
+        }
 
         // Highest threshold first; the first band the score meets or exceeds wins.
         public static readonly (decimal MinScore, string Rating)[] Bands =
@@ -177,17 +196,14 @@ namespace TM_PE.Model
             _ => "secondary"
         };
     }
-}
 
-namespace TM_PE.Model
-{
     // View-model row used by the shared _CriteriaStarRows partial, so the
     // Create and Edit pages render an identical star-rating table (Create just
     // starts every row at zero stars).
     public class CriteriaStarRow
     {
         public Criteria Criteria { get; set; } = new();
-        public int StarRating { get; set; }
+        public decimal StarRating { get; set; }
         public string? Feedback { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace TM_PE.Model
 {
@@ -38,12 +39,29 @@ namespace TM_PE.Model
         [StringLength(100)]
         public string EvaluatorName { get; set; } = "Manager";
 
-        // Free text on purpose (e.g. "August 2026") to match how the business
-        // actually names an evaluation period - not every period lines up with
-        // a calendar month.
-        [Required(ErrorMessage = "Please enter the evaluation period.")]
-        [StringLength(50)]
-        public string EvaluationPeriod { get; set; } = string.Empty;
+        // The calendar month/year this evaluation covers, picked from a
+        // dropdown rather than typed as free text (this used to be a plain
+        // "August 2026" string) - so ticket/task filtering, duplicate
+        // prevention, and historical reports can all key off a real,
+        // structured date range instead of matching against typed strings.
+        [Range(1, 12, ErrorMessage = "Please select a period month.")]
+        public int EvaluationPeriodMonth { get; set; } = DateTime.Now.Month;
+
+        [Range(2000, 2100, ErrorMessage = "Please select a period year.")]
+        public int EvaluationPeriodYear { get; set; } = DateTime.Now.Year;
+
+        // Kept under the old name/shape ("August 2026") so every page that only
+        // ever displayed this string didn't need to change - only Create/Edit,
+        // which actually write Month/Year, know about them directly.
+        [NotMapped]
+        public string EvaluationPeriod =>
+            new DateTime(EvaluationPeriodYear, EvaluationPeriodMonth, 1).ToString("MMMM yyyy");
+
+        [NotMapped]
+        public DateTime EvaluationPeriodStart => new DateTime(EvaluationPeriodYear, EvaluationPeriodMonth, 1);
+
+        [NotMapped]
+        public DateTime EvaluationPeriodEnd => EvaluationPeriodStart.AddMonths(1).AddDays(-1);
 
         [Required]
         [DataType(DataType.Date)]
@@ -183,6 +201,34 @@ namespace TM_PE.Model
                 if (overallScoreOutOf100 >= band.MinScore) return band.Rating;
             }
             return "Poor";
+        }
+
+        // Job Completion and Timeliness are auto-scored straight from a
+        // technician's job ticket record and can be misleading on their own -
+        // e.g. Timeliness can still read 100% while the technician currently
+        // has an overdue ticket in progress, since that ticket hasn't finished
+        // (late or otherwise) yet. Work Quality is the one criterion every role
+        // type always rates by hand, so before an evaluation is finalized every
+        // Work Quality criterion must carry both a star rating and written
+        // feedback - the manager's own judgment call is always on record, never
+        // just whatever the automated numbers happened to say.
+        public static string? ValidateWorkQualityRequired(
+            IEnumerable<Criteria> allowedCriteria,
+            IEnumerable<(int CriteriaID, decimal StarRating, string? Feedback)> results)
+        {
+            var byId = results.ToDictionary(r => r.CriteriaID);
+
+            foreach (var c in allowedCriteria.Where(c => c.MetricType == CriteriaMetricType.WorkQuality))
+            {
+                byId.TryGetValue(c.CriteriaId, out var r);
+
+                if (NormalizeStars(r.StarRating) <= 0 || string.IsNullOrWhiteSpace(r.Feedback))
+                {
+                    return $"\"{c.CriteriaName}\" is a Work Quality criterion - please rate it and add feedback before finalizing.";
+                }
+            }
+
+            return null;
         }
 
         // Bootstrap colour suffix used for rating badges across the pages.

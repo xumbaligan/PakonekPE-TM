@@ -20,6 +20,12 @@ public class EditModel : PageModel
     // these so a manager can't pick one CriteriaValidation would reject.
     public List<string> UsedFieldTechnicianMetricTypes { get; set; } = new();
 
+    // Weight already committed to other active criteria for each Role Type
+    // (excluding this one), so the Edit form can show how much of the 100%
+    // is still available before CriteriaValidation would reject the save.
+    public decimal OfficeStaffWeightUsed { get; set; }
+    public decimal FieldTechnicianWeightUsed { get; set; }
+
     public async Task<IActionResult> OnGetAsync(int id)
     {
         var c = await _db.Criteria.FindAsync(id);
@@ -37,7 +43,7 @@ public class EditModel : PageModel
             return Page();
         }
 
-        var error = await CriteriaValidation.ValidateFieldTechnicianAsync(_db, Item, excludingId: Item.CriteriaId);
+        var error = await CriteriaValidation.ValidateAsync(_db, Item, excludingId: Item.CriteriaId);
         if (error != null)
         {
             ModelState.AddModelError(string.Empty, error);
@@ -56,5 +62,12 @@ public class EditModel : PageModel
             .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive && c.CriteriaId != Item.CriteriaId)
             .Select(c => c.MetricType.ToString())
             .ToListAsync();
+
+        OfficeStaffWeightUsed = await _db.Criteria
+            .Where(c => c.RoleType == RoleType.OfficeStaff && c.IsActive && c.CriteriaId != Item.CriteriaId)
+            .SumAsync(c => (decimal?)c.Weight) ?? 0;
+        FieldTechnicianWeightUsed = await _db.Criteria
+            .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive && c.CriteriaId != Item.CriteriaId)
+            .SumAsync(c => (decimal?)c.Weight) ?? 0;
     }
 }

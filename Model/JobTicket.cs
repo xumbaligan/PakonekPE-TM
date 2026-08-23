@@ -26,25 +26,25 @@ namespace TM_PE.Model
         public static readonly string[] Allowed = { Installation, Repair, Maintenance, Inspection };
     }
 
-    // Job ticket lifecycle. "Closed" is a manager-only, terminal state — once a
-    // ticket is Closed it is locked from further edits. "Reschedule Request" can
-    // be set either by the manager directly (immediate reschedule) or requested
-    // by the field technician leader (awaiting manager approval). "Overdue" is
-    // never chosen directly by anyone — it's computed automatically (see
-    // JobTicketOverdueChecker) whenever a ticket's Date of Completion has
-    // passed and the job hasn't been finished yet.
+    // Job ticket lifecycle. "Completed" is the terminal state - once a ticket is
+    // Completed it is locked from further edits; there is no separate manager
+    // "close" step. "Reschedule Request" can be set either by the manager
+    // directly (immediate reschedule) or requested by the field technician
+    // leader (awaiting manager approval). "Overdue" is never chosen directly by
+    // anyone — it's computed automatically (see JobTicketOverdueChecker)
+    // whenever a ticket's Date of Completion has passed and the job hasn't been
+    // finished yet.
     public static class JobTicketStatuses
     {
         public const string Pending = "Pending";
         public const string InProgress = "In Progress";
         public const string Completed = "Completed";
         public const string Cancelled = "Cancelled";
-        public const string Closed = "Closed";
         public const string RescheduleRequest = "Reschedule Request";
         public const string Rescheduled = "Rescheduled";
         public const string Overdue = "Overdue";
 
-        public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, Closed, RescheduleRequest };
+        public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, RescheduleRequest };
     }
 
     // A ticket becomes Overdue purely because time has passed, not because
@@ -136,12 +136,19 @@ namespace TM_PE.Model
         [Required(ErrorMessage = "Date is required.")]
         public DateTime ServiceDate { get; set; } = DateTime.Now;
 
-        // The deadline the manager sets for this job to be finished. Not
+        // Despite the name, this is the DEADLINE the manager sets for the job to
+        // be finished by - shown to field technicians as "Due Date" - not the
+        // date it was actually finished (see DateCompleted below for that). Not
         // required at the database level (existing tickets predate this field),
         // but the Create page requires it — see CreateModel.OnPostAsync. Drives
         // the automatic Overdue status (see JobTicketOverdueChecker) once it
         // passes and the job still isn't done.
         public DateTime? DateOfCompletion { get; set; }
+
+        // The date the field technician leader actually marked this job
+        // Completed (see FieldTechnician DetailsModel.OnPostSaveAsync) - null
+        // until then. Distinct from DateOfCompletion (the deadline) above.
+        public DateTime? DateCompleted { get; set; }
 
         // Free-text address entered directly by the manager.
         [Required(ErrorMessage = "Location address is required.")]
@@ -153,7 +160,7 @@ namespace TM_PE.Model
         public string? NearestLandmark { get; set; }
 
         // Always starts as "Pending" on creation; never exposed on the Create form.
-        // Valid values: Pending, In Progress, Completed, Cancelled, Closed
+        // Valid values: Pending, In Progress, Completed, Cancelled
         public string Status { get; set; } = JobTicketStatuses.Pending;
 
         // Free-text notes from the field technician leader about the current status.
@@ -161,15 +168,12 @@ namespace TM_PE.Model
         [StringLength(500)]
         public string? Remarks { get; set; }
 
-        [NotMapped]
-        public bool IsClosed => Status == JobTicketStatuses.Closed;
-
-        // Once the field technician leader marks the job Completed (or the manager
-        // later Closes it), the ticket is locked from further edits/status changes
-        // by anyone — field technician or manager.
+        // Once the field technician leader marks the job Completed, the ticket is
+        // locked from further edits/status changes by anyone — field technician
+        // or manager. Completed is terminal; there is no separate "close" step.
         [NotMapped]
         public bool IsLockedFromEditing =>
-            Status == JobTicketStatuses.Completed || Status == JobTicketStatuses.Closed;
+            Status == JobTicketStatuses.Completed;
 
         // Field technicians additionally cannot upload files or change
         // Status/Remarks while a Reschedule Request they submitted is still
@@ -188,6 +192,15 @@ namespace TM_PE.Model
         [NotMapped]
         public bool IsPendingOrOverdue =>
             Status == JobTicketStatuses.Pending || Status == JobTicketStatuses.Overdue;
+
+        // The manager can re-designate the team leader from the Edit page any
+        // time before the job is done - Pending/Overdue (not yet started) or
+        // In Progress (started, but the leader can still change). Once
+        // Completed, Edit is locked entirely (see IsLockedFromEditing) so this
+        // never comes into play there.
+        [NotMapped]
+        public bool CanReassignLeader =>
+            IsPendingOrOverdue || Status == JobTicketStatuses.InProgress;
 
         // The field technician leader can only open/act on a job ticket once its
         // scheduled date actually arrives — no working on (or marking complete)

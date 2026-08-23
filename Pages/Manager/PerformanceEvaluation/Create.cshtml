@@ -51,6 +51,7 @@
 </div>
 
 <form method="post" id="evalForm">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card p-4 mb-4">
@@ -78,11 +79,25 @@
                         </select>
                         <span asp-validation-for="Evaluation.EmployeeID" class="text-danger"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Evaluation Period <span class="text-danger">*</span></label>
-                        <input asp-for="Evaluation.EvaluationPeriod" class="form-control" maxlength="50"
-                               placeholder="e.g. August 2026" />
-                        <span asp-validation-for="Evaluation.EvaluationPeriod" class="text-danger"></span>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Period Month <span class="text-danger">*</span></label>
+                        <select asp-for="Evaluation.EvaluationPeriodMonth" id="periodMonthSelect" class="form-select">
+                            @for (int m = 1; m <= 12; m++)
+                            {
+                                <option value="@m">@System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(m)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Evaluation.EvaluationPeriodMonth" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Period Year <span class="text-danger">*</span></label>
+                        <select asp-for="Evaluation.EvaluationPeriodYear" id="periodYearSelect" class="form-select">
+                            @foreach (var y in Model.PeriodYearOptions)
+                            {
+                                <option value="@y">@y</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Evaluation.EvaluationPeriodYear" class="text-danger"></span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Evaluation Date <span class="text-danger">*</span></label>
@@ -179,7 +194,24 @@
     <script src="~/js/recommendation-modal.js"></script>
     <script>
         (function () {
+            // Changing the period reloads the page via GET so the server can
+            // recompute period-scoped stats/automated criteria for the new
+            // Month/Year - there's no client-side copy of every employee's
+            // per-period ticket/task history to redo that math in JS.
+            const periodMonthSelect = document.getElementById('periodMonthSelect');
+            const periodYearSelect = document.getElementById('periodYearSelect');
             const employeeSelect = document.getElementById('employeeSelect');
+            function reloadForPeriod() {
+                const params = new URLSearchParams();
+                params.set('Month', periodMonthSelect.value);
+                params.set('Year', periodYearSelect.value);
+                // Carry the currently selected employee through the reload so
+                // changing the period doesn't reset "Select an employee".
+                if (employeeSelect.value) params.set('EmployeeId', employeeSelect.value);
+                window.location.href = window.location.pathname + '?' + params.toString();
+            }
+            periodMonthSelect.addEventListener('change', reloadForPeriod);
+            periodYearSelect.addEventListener('change', reloadForPeriod);
             const noEmployeeNotice = document.getElementById('noEmployeeNotice');
             const ftCard = document.getElementById('fieldTechnicianCriteriaCard');
             const osCard = document.getElementById('officeStaffCriteriaCard');
@@ -314,13 +346,19 @@
                 if (e.target.classList.contains('star-value-input')) recalcPreview();
             });
 
-            // Initial state (also covers a validation-failure postback).
+            // Initial state (also covers a validation-failure postback, where
+            // the server re-renders the manager's previously entered ratings
+            // and selected employee). Only reset both cards up front when no
+            // employee is selected - if one is, dispatching 'change' below
+            // enables/preserves whichever card matches that employee's role
+            // and disables (zeroing) only the other one, so a postback never
+            // wipes out ratings the manager already entered.
             window.StarRating.initAll(document);
-            setBlockEnabled(ftCard, false);
-            setBlockEnabled(osCard, false);
             if (employeeSelect.value) {
                 employeeSelect.dispatchEvent(new Event('change'));
             } else {
+                setBlockEnabled(ftCard, false);
+                setBlockEnabled(osCard, false);
                 applyStats(null);
                 recalcPreview();
             }

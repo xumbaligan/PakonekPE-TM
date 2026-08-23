@@ -258,14 +258,18 @@ namespace TM_PE.Pages.OfficeStaff
 
                 if (approvedCount == activities.Count)
                 {
+                    if (task.Status != "Completed") task.DateCompleted = DateTime.Now;
                     task.Status = "Completed";
                 }
                 else if (activities.Any(a => a.Status == "Approved" || a.Status == "Submitted"))
                 {
                     task.Status = "In Progress";
                 }
-                else
+                else if (task.Status != "In Progress")
                 {
+                    // Once a task has been marked In Progress, it stays there even if
+                    // a Rejected activity leaves nothing currently Submitted/Approved -
+                    // it should never fall back to Pending.
                     task.Status = "Pending";
                 }
             }

@@ -23,7 +23,6 @@
             <option value="In Progress" selected="@(Model.StatusFilter == "In Progress")">In Progress</option>
             <option value="Completed" selected="@(Model.StatusFilter == "Completed")">Completed</option>
             <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Cancelled</option>
-            <option value="Closed" selected="@(Model.StatusFilter == "Closed")">Closed</option>
             <option value="Rescheduled" selected="@(Model.StatusFilter == "Rescheduled")">Rescheduled</option>
             <option value="Overdue" selected="@(Model.StatusFilter == "Overdue")">Overdue</option>
         </select>
@@ -36,7 +35,6 @@
             <tr class="text-muted small">
                 <th>Task Number</th>
                 <th>Job Type</th>
-                <th>Client</th>
                 <th>Leader</th>
                 <th>Status</th>
                 <th>Due Date</th>
@@ -62,17 +60,15 @@
                 <tr data-leader="@(leader?.FullName.ToLower() ?? "")"
                     data-jobtype="@item.JobType.ToLower()"
                     data-ticketid="@item.TicketNumber.ToLower()"
-                    data-client="@item.ClientFullName.ToLower()"
                     data-status="@item.Status.ToLower()">
                     <td class="text-muted">@item.TicketNumber</td>
                     <td class="fw-semibold">@item.JobType</td>
-                    <td>@item.ClientFullName</td>
+                    <td>@(item.JobType == TM_PE.Model.JobTypes.Maintenance ? "—" : item.ClientFullName)</td>
                     <td>@(leader != null ? leader.FullName : "—")</td>
                     <td>
                         @{
                             var badgeClass = item.Status switch
                             {
-                                "Closed" => "bg-primary-subtle text-primary",
                                 "Completed" => "bg-success-subtle text-success",
                                 "In Progress" => "bg-info-subtle text-info",
                                 "Cancelled" => "bg-danger-subtle text-danger",
@@ -160,20 +156,23 @@
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-sm-4">
-                            <div class="text-muted small">Client</div>
-                            <div>@item.ClientFullName</div>
+                    @if (item.JobType != TM_PE.Model.JobTypes.Maintenance)
+                    {
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Client</div>
+                                <div>@item.ClientFullName</div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Primary Number</div>
+                                <div>@item.PrimaryNumber</div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="text-muted small">Secondary Number</div>
+                                <div>@(string.IsNullOrWhiteSpace(item.SecondaryNumber) ? "—" : item.SecondaryNumber)</div>
+                            </div>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="text-muted small">Primary Number</div>
-                            <div>@item.PrimaryNumber</div>
-                        </div>
-                        <div class="col-sm-4">
-                            <div class="text-muted small">Secondary Number</div>
-                            <div>@(string.IsNullOrWhiteSpace(item.SecondaryNumber) ? "—" : item.SecondaryNumber)</div>
-                        </div>
-                    </div>
+                    }
 
                     <div class="row g-3 mb-4">
                         @if (item.JobType == "Installation")

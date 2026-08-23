@@ -414,7 +414,7 @@
                         row.innerHTML = `
                             <td class="small fw-semibold">${t.TicketNumber}</td>
                             <td class="small">${t.JobType}</td>
-                            <td class="small">${t.ClientFullName}</td>
+                            <td class="small">${t.JobType === 'Maintenance' ? '—' : t.ClientFullName}</td>
                             <td class="small"><span class="badge rounded-pill ${statusClass}">${t.Status}</span></td>
                             <td class="small text-muted">${serviceDate}</td>
                             <td class="small text-muted">${dueDate}</td>

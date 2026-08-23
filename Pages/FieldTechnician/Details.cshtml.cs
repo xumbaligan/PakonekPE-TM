@@ -183,7 +183,6 @@ namespace TM_PE.Pages.FieldTechnician
             {
                 ErrorMessage = ticket.Status switch
                 {
-                    JobTicketStatuses.Closed => "This job order has been closed and can no longer be updated.",
                     JobTicketStatuses.Completed => "This job order has been marked Completed and can no longer be updated.",
                     JobTicketStatuses.RescheduleRequest => "This job order has a pending reschedule request awaiting manager approval and can't be updated until it's resolved.",
                     _ => "This job order can no longer be updated."
@@ -291,7 +290,6 @@ namespace TM_PE.Pages.FieldTechnician
             {
                 ErrorMessage = ticket.Status switch
                 {
-                    JobTicketStatuses.Closed => "This job order has been closed and can no longer be updated.",
                     JobTicketStatuses.Completed => "This job order has been marked Completed and can no longer be updated.",
                     JobTicketStatuses.RescheduleRequest => "This job order has a pending reschedule request awaiting manager approval and can't be updated until it's resolved.",
                     _ => "This job order can no longer be updated."
@@ -385,12 +383,10 @@ namespace TM_PE.Pages.FieldTechnician
                 });
             }
 
-            // Completed (and Closed) tickets cannot be changed further
+            // Completed tickets cannot be changed further
             if (ticket.IsLockedFromEditing)
             {
-                return BackWithError(ticket.Status == JobTicketStatuses.Closed
-                    ? "This job order has been closed and can no longer be updated."
-                    : "This job order has been marked Completed and can no longer be updated.");
+                return BackWithError("This job order has been marked Completed and can no longer be updated.");
             }
 
             // A pending reschedule request also blocks further changes until the
@@ -541,6 +537,11 @@ namespace TM_PE.Pages.FieldTechnician
             else
             {
                 ticket.Status = status;
+
+                if (status == JobTicketStatuses.Completed)
+                {
+                    ticket.DateCompleted = DateTime.Now;
+                }
 
                 ticket.Remarks = string.IsNullOrWhiteSpace(remarks)
                  ? null

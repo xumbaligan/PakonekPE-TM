@@ -5,7 +5,6 @@
     Layout = "_FieldTechnicianLayout";
     var badgeClass = Model.JobTicket.Status switch
     {
-        "Closed" => "bg-primary-subtle text-primary",
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
@@ -18,6 +17,14 @@
         string.IsNullOrEmpty(name)
             ? "—"
             : System.Text.RegularExpressions.Regex.IsMatch(name, @"^\d+$") ? $"₱{name} / month" : name;
+
+    // Mirrors OnPostSaveAsync's remarks requirement (In Progress, Cancelled,
+    // Reschedule Request) so the placeholder is correct on first render too,
+    // not just after the statusSelect "change" JS below runs.
+    var remarksRequiredStatuses = new[] { "In Progress", "Reschedule Request", "Cancelled" };
+    var remarksPlaceholder = remarksRequiredStatuses.Contains(Model.PendingStatus)
+        ? "Remarks are required for this status"
+        : "Optional notes about this update";
 }
 
 
@@ -79,22 +86,32 @@
                 <div class="text-muted small">Date Created</div>
                 <div>@Model.JobTicket.DateCreated.ToString("M/d/yyyy")</div>
             </div>
+            @if (Model.JobTicket.DateCompleted.HasValue)
+            {
+                <div class="col-sm-3">
+                    <div class="text-muted small">Date Completed</div>
+                    <div>@Model.JobTicket.DateCompleted.Value.ToString("M/d/yyyy")</div>
+                </div>
+            }
         </div>
 
-        <div class="row g-3 mb-3">
-            <div class="col-sm-4">
-                <div class="text-muted small">Client</div>
-                <div>@Model.JobTicket.ClientFullName</div>
+        @if (Model.JobTicket.JobType != TM_PE.Model.JobTypes.Maintenance)
+        {
+            <div class="row g-3 mb-3">
+                <div class="col-sm-4">
+                    <div class="text-muted small">Client</div>
+                    <div>@Model.JobTicket.ClientFullName</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-muted small">Primary Number</div>
+                    <div>@Model.JobTicket.PrimaryNumber</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-muted small">Secondary Number</div>
+                    <div>@(string.IsNullOrWhiteSpace(Model.JobTicket.SecondaryNumber) ? "—" : Model.JobTicket.SecondaryNumber)</div>
+                </div>
             </div>
-            <div class="col-sm-4">
-                <div class="text-muted small">Primary Number</div>
-                <div>@Model.JobTicket.PrimaryNumber</div>
-            </div>
-            <div class="col-sm-4">
-                <div class="text-muted small">Secondary Number</div>
-                <div>@(string.IsNullOrWhiteSpace(Model.JobTicket.SecondaryNumber) ? "—" : Model.JobTicket.SecondaryNumber)</div>
-            </div>
-        </div>
+        }
 
         <div class="mb-1">
             <div class="text-muted small mb-2">Location</div>
@@ -182,7 +199,7 @@
                     <div class="col-sm-8">
                         <label class="form-label small">Remarks</label>
                         <input type="text" name="remarks" id="remarksInput" class="form-control" maxlength="500"
-                               value="@Model.PendingRemarks" placeholder="Optional notes about this update" />
+                               value="@Model.PendingRemarks" placeholder="@remarksPlaceholder" />
                     </div>
                 </div>
             </form>
@@ -238,7 +255,6 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
 @{
     Func<string, string> historyBadgeClass = s => s switch
     {
-        "Closed" => "bg-primary-subtle text-primary",
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
@@ -510,6 +526,21 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
         statusSelect.addEventListener("change", function () {
             uploadStatus.value = statusSelect.value;
         });
+    }
+
+    // In Progress, Reschedule Request, and Cancelled all require remarks
+    // server-side (see DetailsModel.OnPostSaveAsync) - the placeholder makes
+    // that obvious before the leader hits Save instead of only after.
+    const REMARKS_REQUIRED_STATUSES = ["In Progress", "Reschedule Request", "Cancelled"];
+    function updateRemarksPlaceholder() {
+        if (!statusSelect || !remarksInput) return;
+        remarksInput.placeholder = REMARKS_REQUIRED_STATUSES.includes(statusSelect.value)
+            ? "Remarks are required for this status"
+            : "Optional notes about this update";
+    }
+    if (statusSelect) {
+        statusSelect.addEventListener("change", updateRemarksPlaceholder);
+        updateRemarksPlaceholder();
     }
 
     if (remarksInput && uploadRemarks) {

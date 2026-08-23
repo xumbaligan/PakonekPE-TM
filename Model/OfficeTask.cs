@@ -23,6 +23,11 @@ namespace TM_PE.Model
 
         public DateTime DueDate { get; set; } = DateTime.Now;
 
+        // The date every activity got Approved, making the task Completed
+        // (see RecalculateTaskAsync) - null until then. Distinct from DueDate
+        // above, which is just the deadline.
+        public DateTime? DateCompleted { get; set; }
+
         public string Status { get; set; } = "Pending";
 
         public decimal Progress { get; set; } = 0;

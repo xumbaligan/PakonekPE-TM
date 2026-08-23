@@ -57,9 +57,9 @@ namespace TM_PE.Pages.Manager.JobTickets
             // opened rather than relying on whatever was last saved.
             await JobTicketOverdueChecker.RefreshAsync(_context, new[] { jobTicket });
 
-            // Completed (and Closed) tickets are locked — no further edits allowed.
-            // NOTE: a pending Reschedule Request does NOT lock the manager out —
-            // they're the one who needs to act on it (see OnPostAsync).
+            // Completed tickets are locked — no further edits allowed. NOTE: a
+            // pending Reschedule Request does NOT lock the manager out — they're
+            // the one who needs to act on it (see OnPostAsync).
             if (jobTicket.IsLockedFromEditing)
             {
                 return RedirectToPage("Details", new { id });
@@ -97,17 +97,18 @@ namespace TM_PE.Pages.Manager.JobTickets
                 return NotFound();
             }
 
-            // Completed (and Closed) tickets are locked — no further edits allowed,
-            // even if this page was submitted directly.
+            // Completed tickets are locked — no further edits allowed, even if
+            // this page was submitted directly.
             if (ticket.IsLockedFromEditing)
             {
                 return RedirectToPage("Details", new { id = ticket.JobTicketID });
             }
 
             // Captured before any mutations below — used both to gate the leader
-            // change (only allowed while Pending) and to know whether this save is
-            // resolving a pending Reschedule Request from the field technician.
-            bool wasPending = ticket.IsPendingOrOverdue;
+            // change (allowed while Pending/Overdue or In Progress) and to know
+            // whether this save is resolving a pending Reschedule Request from
+            // the field technician.
+            bool canReassignLeader = ticket.CanReassignLeader;
             bool wasRescheduleRequest = ticket.Status == JobTicketStatuses.RescheduleRequest;
 
             OriginalServiceDate = ticket.ServiceDate;
@@ -128,15 +129,24 @@ namespace TM_PE.Pages.Manager.JobTickets
                     "This job order has a pending reschedule request. Please set a new service date to resolve it.");
             }
 
+            // Only enforced when the manager is actually rescheduling - an
+            // existing ticket's ServiceDate can already be in the past (e.g.
+            // still Pending days after the originally scheduled date), and
+            // leaving that untouched must still be allowed to save.
+            if (dateChanged && JobTicket.ServiceDate.Date < DateTime.Now.Date)
+            {
+                ModelState.AddModelError("JobTicket.ServiceDate", "Date cannot be rescheduled to a previous day.");
+            }
+
             if (JobTicket.DateOfCompletion == null)
                 ModelState.AddModelError("JobTicket.DateOfCompletion", "Please set a date of completion.");
             else if (JobTicket.DateOfCompletion.Value.Date < JobTicket.ServiceDate.Date)
                 ModelState.AddModelError("JobTicket.DateOfCompletion", "Date of completion cannot be before the service date.");
 
-            // The leader can only be changed while the ticket is Pending, and only
-            // among the technicians already assigned — this page can't add/remove
-            // assignees.
-            if (wasPending && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
+            // The leader can only be changed while the ticket is Pending/Overdue
+            // or In Progress, and only among the technicians already assigned —
+            // this page can't add/remove assignees.
+            if (canReassignLeader && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
             {
                 var assignedIds = await _context.JobTicketAssignments
                     .Where(a => a.JobTicketID == ticket.JobTicketID)
@@ -288,9 +298,10 @@ namespace TM_PE.Pages.Manager.JobTickets
                 ticket.Remarks = null;
             }
 
-            // The leader can only be re-designated while the ticket was Pending —
-            // the assigned team itself is still fixed and can't be changed here.
-            if (wasPending && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
+            // The leader can only be re-designated while the ticket was Pending/
+            // Overdue or In Progress — the assigned team itself is still fixed
+            // and can't be changed here.
+            if (canReassignLeader && LeaderEmployeeId.HasValue && LeaderEmployeeId.Value != 0)
             {
                 var assignments = await _context.JobTicketAssignments
                     .Where(a => a.JobTicketID == ticket.JobTicketID)

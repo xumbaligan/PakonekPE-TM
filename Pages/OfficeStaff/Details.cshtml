@@ -14,7 +14,7 @@
     var soleAssignee = assignedCount <= 1;
 }
 
-<div class="container mt-4" style="max-width: 900px;">
+
 
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
@@ -34,7 +34,6 @@
                     </h5>
                     <div class="text-muted small">Viewing as <strong>@Model.CurrentEmployee.FullName</strong></div>
                 </div>
-                <a asp-page="./Index" class="btn-close" aria-label="Close"></a>
             </div>
 
             <hr />
@@ -64,6 +63,13 @@
                     <div class="text-muted small">Due Date</div>
                     <div>@Model.OfficeTask.DueDate.ToString("M/d/yyyy")</div>
                 </div>
+                @if (Model.OfficeTask.DateCompleted.HasValue)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="text-muted small">Date Completed</div>
+                        <div>@Model.OfficeTask.DateCompleted.Value.ToString("M/d/yyyy")</div>
+                    </div>
+                }
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Model.OfficeTask.Description))
@@ -216,4 +222,3 @@
     <div class="d-flex justify-content-end mb-4">
         <a asp-page="./Index" class="btn btn-outline-secondary">Back to My Tasks</a>
     </div>
-</div>

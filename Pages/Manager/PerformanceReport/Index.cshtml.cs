@@ -30,14 +30,26 @@ namespace TM_PE.Pages.Manager.PerformanceReport
 
         // Filters arrive on the query string so "Generate Report" is a plain GET
         // - the report is bookmarkable and Export CSV can reuse the same values.
+        // "yyyy-MM" - sortable and unambiguous on the wire; PeriodOptions
+        // carries the human-readable label ("August 2026") for the dropdown.
         [BindProperty(SupportsGet = true)]
         public string? Period { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public int? DepartmentId { get; set; }
 
-        public List<string> PeriodOptions { get; set; } = new();
+        public List<PeriodOption> PeriodOptions { get; set; } = new();
         public List<Department> DepartmentOptions { get; set; } = new();
+
+        public string PeriodLabel => string.IsNullOrWhiteSpace(Period)
+            ? "All Periods"
+            : (PeriodOptions.FirstOrDefault(p => p.Value == Period)?.Label ?? Period);
+
+        public class PeriodOption
+        {
+            public string Value { get; set; } = string.Empty;
+            public string Label { get; set; } = string.Empty;
+        }
 
         public List<ReportRow> Rows { get; set; } = new();
 
@@ -142,7 +154,7 @@ namespace TM_PE.Pages.Manager.PerformanceReport
 
             var csv = new StringBuilder();
             csv.AppendLine("Performance Report");
-            csv.AppendLine($"Report Period,{Csv(string.IsNullOrWhiteSpace(Period) ? "All Periods" : Period)}");
+            csv.AppendLine($"Report Period,{Csv(PeriodLabel)}");
             csv.AppendLine($"Department,{Csv(DepartmentLabel())}");
             csv.AppendLine($"Generated,{Csv(DateTime.Now.ToString("MMMM d yyyy h:mm tt"))}");
             csv.AppendLine();
@@ -198,11 +210,20 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                 .OrderBy(d => d.DepartmentName)
                 .ToListAsync();
 
-            PeriodOptions = await _context.PerformanceEvaluations
-                .Select(e => e.EvaluationPeriod)
+            var distinctPeriods = await _context.PerformanceEvaluations
+                .Select(e => new { e.EvaluationPeriodYear, e.EvaluationPeriodMonth })
                 .Distinct()
-                .OrderByDescending(p => p)
                 .ToListAsync();
+
+            PeriodOptions = distinctPeriods
+                .OrderByDescending(p => p.EvaluationPeriodYear)
+                .ThenByDescending(p => p.EvaluationPeriodMonth)
+                .Select(p => new PeriodOption
+                {
+                    Value = $"{p.EvaluationPeriodYear:D4}-{p.EvaluationPeriodMonth:D2}",
+                    Label = new DateTime(p.EvaluationPeriodYear, p.EvaluationPeriodMonth, 1).ToString("MMMM yyyy")
+                })
+                .ToList();
 
             // Only Field Technicians and Office Staff are evaluated, so
             // Admin/Manager accounts never appear on the report.
@@ -225,7 +246,14 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                 .Where(e => employeeIds.Contains(e.EmployeeID));
 
             if (!string.IsNullOrWhiteSpace(Period))
-                evaluationQuery = evaluationQuery.Where(e => e.EvaluationPeriod == Period);
+            {
+                var parts = Period.Split('-');
+                if (parts.Length == 2 && int.TryParse(parts[0], out var periodYear) && int.TryParse(parts[1], out var periodMonth))
+                {
+                    evaluationQuery = evaluationQuery.Where(e =>
+                        e.EvaluationPeriodYear == periodYear && e.EvaluationPeriodMonth == periodMonth);
+                }
+            }
 
             var evaluationSummaries = await evaluationQuery
                 .GroupBy(e => e.EmployeeID)
@@ -247,7 +275,7 @@ namespace TM_PE.Pages.Manager.PerformanceReport
             var completedTicketCount = await _context.JobTicketAssignments
                 .Where(a => employeeIds.Contains(a.EmployeeID)
                     && a.JobTicket != null
-                    && (a.JobTicket.Status == JobTicketStatuses.Completed || a.JobTicket.Status == JobTicketStatuses.Closed))
+                    && a.JobTicket.Status == JobTicketStatuses.Completed)
                 .Select(a => a.JobTicketID)
                 .Distinct()
                 .CountAsync();

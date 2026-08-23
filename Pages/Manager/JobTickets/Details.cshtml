@@ -6,7 +6,6 @@
     Layout = "_Layout";
     var badgeClass = Model.JobTicket.Status switch
     {
-        "Closed" => "bg-primary-subtle text-primary",
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
@@ -49,7 +48,7 @@
                 <span class="badge rounded-pill @badgeClass px-3 py-2">@Model.JobTicket.Status</span>
             </div>
             <div class="col-sm-3">
-                <div class="text-muted small">Date of Completion</div>
+                <div class="text-muted small">Due Date</div>
                 <div>@(Model.JobTicket.DateOfCompletion?.ToString("M/d/yyyy") ?? "—")</div>
             </div>
         </div>
@@ -111,9 +110,9 @@
                         </span>
                     }
                 </div>
-                @if (Model.JobTicket.IsPendingOrOverdue)
+                @if (Model.JobTicket.CanReassignLeader)
                 {
-                    <p class="text-muted small mt-2 mb-0">The leader can be changed from the Edit page while this job order is Pending.</p>
+                    <p class="text-muted small mt-2 mb-0">The leader can be changed from the Edit page while this job order is Pending or In Progress.</p>
                 }
             }
             else
@@ -126,7 +125,7 @@
         {
             <div class="mt-4">
                 <div class="text-muted small mb-1">Remarks (from Field Technician Leader)</div>
-                <div class="border rounded p-2 bg-warning-subtle border-warning fw-semibold">@Model.JobTicket.Remarks</div>
+                <div class="border rounded p-2 bg-light text-muted">@Model.JobTicket.Remarks</div>
             </div>
         }
 
@@ -162,7 +161,6 @@
 @{
     Func<string, string> historyBadgeClass = s => s switch
     {
-        "Closed" => "bg-primary-subtle text-primary",
         "Completed" => "bg-success-subtle text-success",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
@@ -283,15 +281,6 @@
 }
 
 <div class="d-flex justify-content-end gap-2 mb-4 mt-4">
-    @if (Model.JobTicket.Status == "Completed")
-    {
-        <form method="post" asp-page-handler="Close" asp-route-id="@Model.JobTicket.JobTicketID"
-              onsubmit="return confirm('Close this job ticket? Once closed, it can no longer be edited.');">
-            <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-check2-circle"></i> Close Ticket
-            </button>
-        </form>
-    }
     @if (!Model.JobTicket.IsLockedFromEditing)
     {
         <a asp-page="./Edit" asp-route-id="@Model.JobTicket.JobTicketID" class="btn btn-outline-primary btn-sm">

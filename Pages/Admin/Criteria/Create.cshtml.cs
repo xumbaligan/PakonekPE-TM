@@ -19,12 +19,25 @@ public class CreateModel : PageModel
     // can't pick one that CriteriaValidation would just reject on Save.
     public List<string> UsedFieldTechnicianMetricTypes { get; set; } = new();
 
+    // Weight already committed to active criteria for each Role Type, so the
+    // Create form can show how much of the 100% is still available before
+    // CriteriaValidation would reject the save.
+    public decimal OfficeStaffWeightUsed { get; set; }
+    public decimal FieldTechnicianWeightUsed { get; set; }
+
     public async Task OnGetAsync()
     {
         UsedFieldTechnicianMetricTypes = await _db.Criteria
             .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive)
             .Select(c => c.MetricType.ToString())
             .ToListAsync();
+
+        OfficeStaffWeightUsed = await _db.Criteria
+            .Where(c => c.RoleType == RoleType.OfficeStaff && c.IsActive)
+            .SumAsync(c => (decimal?)c.Weight) ?? 0;
+        FieldTechnicianWeightUsed = await _db.Criteria
+            .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive)
+            .SumAsync(c => (decimal?)c.Weight) ?? 0;
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -35,7 +48,7 @@ public class CreateModel : PageModel
             return Page();
         }
 
-        var error = await CriteriaValidation.ValidateFieldTechnicianAsync(_db, Item, excludingId: null);
+        var error = await CriteriaValidation.ValidateAsync(_db, Item, excludingId: null);
         if (error != null)
         {
             ModelState.AddModelError(string.Empty, error);

@@ -3,6 +3,36 @@
     --primary-glow: #3b82f6;
 }
 
+/*
+   Every Bootstrap size (headings, badges, buttons, .fs-*, icon glyphs - bi
+   icons are font glyphs, so they scale with this too) is defined in rem,
+   which is relative to the root (html) font-size. Dropping it from the
+   16px default to 14px scales all of that down together in one place,
+   instead of hunting down every heading/label across every page.
+
+   Text still needs to shrink a bit further as the screen gets smaller - a
+   14px base that looks right on a laptop reads noticeably bigger on a phone,
+   where the same rem-sized headings/badges/tiles have much less width to
+   work with. These breakpoints match the ones already used for the sidebar
+   (992px) and the star-rating widget (576px) elsewhere in this file, so the
+   whole responsive scheme stays on one shared set of steps.
+*/
+html {
+    font-size: 14px;
+}
+
+@media (max-width: 991.98px) {
+    html {
+        font-size: 13.5px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    html {
+        font-size: 13px;
+    }
+}
+
 body {
     font-family: 'Segoe UI', sans-serif;
 }
@@ -17,10 +47,19 @@ body {
    employee reveals/hides large blocks of criteria via JS and used to make
    the sidebar visibly grow/shrink along with it. overflow-y lets the nav
    scroll on its own if it ever has more links than a short window can fit.
+
+   flex-shrink: 0 is just as important: every flex item defaults to
+   flex-shrink: 1, so if main's content is ever wider than the space left for
+   it (e.g. a wide table/form on a page like the one above), the browser
+   would otherwise shrink the sidebar along with it to make room, even below
+   its own 250px width. main gets min-width: 0 (see the layout files) so IT
+   absorbs all of that instead - the sidebar now never gives up width no
+   matter how wide main's content gets.
 */
 .sidebar {
     width: 250px;
     height: 100vh;
+    flex-shrink: 0;
     position: sticky;
     top: 0;
     align-self: flex-start;
@@ -104,10 +143,15 @@ body {
     }
 }
 
+    .sidebar h4 {
+        font-size: 1.15rem;
+    }
+
     .sidebar .nav-link {
+        font-size: .9rem;
         border-radius: 8px;
         margin-bottom: 4px;
-        padding: 10px 14px;
+        padding: 8px 14px;
     }
 
         .sidebar .nav-link:hover {
@@ -115,7 +159,7 @@ body {
         }
 
     .sidebar .nav-section-label {
-        font-size: .72rem;
+        font-size: .68rem;
         font-weight: 600;
         letter-spacing: .06em;
         text-transform: uppercase;

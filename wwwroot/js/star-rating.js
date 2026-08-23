@@ -56,9 +56,8 @@
             if (fg) fg.style.width = fillPercent(value, index) + '%';
         });
 
-        const label = container.parentElement
-            ? container.parentElement.querySelector('.star-value-label')
-            : null;
+        const scope = container.closest('td') || container.parentElement;
+        const label = scope ? scope.querySelector('.star-value-label') : null;
         if (label) {
             const weight = parseFloat(label.dataset.weight || '0');
             const points = weight ? (weight * value / MAX_STARS) : 0;

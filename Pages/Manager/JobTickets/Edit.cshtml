@@ -150,7 +150,7 @@
                     <h5 class="fw-semibold mb-3">👷 Assigned Field Technicians</h5>
                     @if (Model.JobTicket.Assignments != null && Model.JobTicket.Assignments.Any())
                     {
-                        @if (Model.JobTicket.IsPendingOrOverdue)
+                        @if (Model.JobTicket.CanReassignLeader)
                         {
                             <p class="text-muted small mb-3">
                                 Choose who leads this job order. The assigned team itself can't be
@@ -165,7 +165,7 @@
                                                    name="LeaderEmployeeId" id="leaderRadio-@a.EmployeeID"
                                                    value="@a.EmployeeID"
                                                    checked="@(Model.LeaderEmployeeId == a.EmployeeID)" />
-                                            <label class="form-check-label small" for="leaderRadio-@a.EmployeeID">Leader</label>
+                                            <label class="form-check-label small" for="leaderRadio-@a.EmployeeID"></label>
                                         </div>
                                         <span class="flex-grow-1" id="empName-@a.EmployeeID">
                                             @a.Employee!.FullName
@@ -185,7 +185,7 @@
                                     </span>
                                 }
                             </div>
-                            <p class="text-muted small mt-2 mb-0">The leader can only be changed while this job order is Pending.</p>
+                            <p class="text-muted small mt-2 mb-0">The leader can only be changed while this job order is Pending or In Progress.</p>
                         }
                     }
                     else
@@ -197,9 +197,10 @@
                             Leader Remarks
                         </label>
 
-                        <textarea class="form-control"
+                        <textarea class="form-control bg-light text-muted"
                                   rows="3"
-                                  readonly>@Model.JobTicket.Remarks</textarea>
+                                  readonly
+                                  style="opacity:.75;">@Model.JobTicket.Remarks</textarea>
 
                         <div class="form-text">
                             Remarks submitted by the field technician leader.
@@ -301,6 +302,23 @@
 
             jobTypeSelect.addEventListener('change', applyJobType);
             applyJobType();
+
+            // ---------------- SERVICE DATE (reschedule) ----------------
+            // A reschedule can never move into the past - but an existing
+            // ticket's ServiceDate can already be in the past on load (e.g.
+            // still Pending days after the originally scheduled date), and
+            // that stored value must still submit cleanly if left untouched.
+            // So the "no past dates" floor only kicks in once the manager
+            // actually changes the field, not from a static min at load
+            // (which would make the browser reject an untouched, already-past
+            // date on submit).
+            const todayStr = new Date().toISOString().slice(0, 10);
+            serviceDateInput.addEventListener('change', function () {
+                if (serviceDateInput.value && serviceDateInput.value < todayStr) {
+                    serviceDateInput.value = todayStr;
+                }
+                serviceDateInput.min = todayStr;
+            });
 
             // ---------------- DATE OF COMPLETION ----------------
             const dateOfCompletionInput = document.getElementById('dateOfCompletionInput');

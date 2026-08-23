@@ -17,6 +17,12 @@ namespace TM_PE.Model
         public string FeedBack { get; set; } = string.Empty;
         public string Status { get; set; } = "Pending";
 
+        // How many times a manager has Rejected this activity - incremented each
+        // time (see Manager/OfficeTask DetailsModel.OnPostRejectActivityAsync),
+        // shown next to the Rejected status label so it's clear this isn't the
+        // employee's first attempt.
+        public int RejectionCount { get; set; } = 0;
+
         public DateTime DateCreated { get; set; } = DateTime.Now;
 
         public int? AssignedEmployeeID { get; set; }

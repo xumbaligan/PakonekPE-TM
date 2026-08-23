@@ -208,7 +208,7 @@ namespace TM_PE.Pages.Manager.WorkLoadMonitoring
                 var overdueTickets = assignedTickets.Count(t =>
                     t.Status is JobTicketStatuses.Pending or JobTicketStatuses.InProgress
                     && t.ServiceDate.Date < today);
-                var completedTickets = assignedTickets.Count(t => t.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed);
+                var completedTickets = assignedTickets.Count(t => t.Status == JobTicketStatuses.Completed);
 
                 // Simple, transparent weighting consistent with the Office Staff
                 // summary: an active ticket counts more, an overdue one counts extra.

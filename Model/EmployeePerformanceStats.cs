@@ -44,8 +44,15 @@ namespace TM_PE.Model
     {
         // Builds the stats for every employee in one pass, so a page rendering a
         // whole employee dropdown doesn't fire a query per person.
+        //
+        // periodStart/periodEnd optionally scope every figure to only the
+        // tickets/tasks actually due within that date range (a Performance
+        // Evaluation's period), instead of the employee's all-time totals -
+        // pass both or neither. A ticket/task without a due date can never be
+        // attributed to a specific period, so it's excluded when scoped.
         public static async Task<Dictionary<int, EmployeePerformanceStats>> BuildAsync(
-            AppDbContext context, IEnumerable<int> employeeIds)
+            AppDbContext context, IEnumerable<int> employeeIds,
+            DateTime? periodStart = null, DateTime? periodEnd = null)
         {
             var ids = employeeIds.Distinct().ToList();
             var stats = ids.ToDictionary(id => id, _ => new EmployeePerformanceStats());
@@ -54,7 +61,10 @@ namespace TM_PE.Model
             // ---------- Job tickets ----------
             var ticketAssignments = await context.JobTicketAssignments
                 .Include(a => a.JobTicket)
-                .Where(a => ids.Contains(a.EmployeeID) && a.JobTicket != null)
+                .Where(a => ids.Contains(a.EmployeeID) && a.JobTicket != null
+                    && (periodStart == null || (a.JobTicket!.DateOfCompletion != null
+                        && a.JobTicket.DateOfCompletion.Value.Date >= periodStart.Value.Date
+                        && a.JobTicket.DateOfCompletion.Value.Date <= periodEnd!.Value.Date)))
                 .ToListAsync();
 
             var ticketIds = ticketAssignments.Select(a => a.JobTicketID).Distinct().ToList();
@@ -90,7 +100,7 @@ namespace TM_PE.Model
                 }
                 assignedIds.Add(ticket.JobTicketID);
 
-                if (ticket.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed)
+                if (ticket.Status == JobTicketStatuses.Completed)
                 {
                     s.CompletedJobsTasks++;
                     s.JobTicketsCompleted++;
@@ -111,6 +121,16 @@ namespace TM_PE.Model
                 {
                     s.Cancelled++;
                 }
+                else if (ticket.Status == JobTicketStatuses.Overdue)
+                {
+                    // An Overdue ticket is late by definition - it has to count
+                    // against OnTimeRate, not just disappear from the denominator.
+                    // Otherwise a technician who is currently sitting on an
+                    // overdue ticket could still show a 100% on-time rate as long
+                    // as every ticket they'd actually finished happened to be on
+                    // time.
+                    s.OnTimeEligible++;
+                }
 
                 if (ticket.Status is JobTicketStatuses.Rescheduled or JobTicketStatuses.RescheduleRequest)
                 {
@@ -130,18 +150,25 @@ namespace TM_PE.Model
             // ---------- Office tasks ----------
             var taskAssignments = await context.TaskAssignments
                 .Include(a => a.OfficeTask)
-                .Where(a => ids.Contains(a.EmployeeID) && a.OfficeTask != null)
+                .Where(a => ids.Contains(a.EmployeeID) && a.OfficeTask != null
+                    && (periodStart == null
+                        || (a.OfficeTask!.DueDate.Date >= periodStart.Value.Date
+                            && a.OfficeTask.DueDate.Date <= periodEnd!.Value.Date)))
                 .ToListAsync();
 
             var taskIds = taskAssignments.Select(a => a.OfficeTaskID).Distinct().ToList();
 
             // Rejected activities are counted against whoever actually claimed
             // them (AssignedEmployeeID), not every employee assigned to the
-            // parent task, since only the claiming employee's submission got rejected.
+            // parent task, since only the claiming employee's submission got
+            // rejected. Scoped to the same period-filtered tasks above (via
+            // taskIds) so a rejection on a task outside the period isn't held
+            // against this evaluation.
             var rejectedCounts = await context.TaskActivities
                 .Where(a => a.AssignedEmployeeID.HasValue
                     && ids.Contains(a.AssignedEmployeeID.Value)
-                    && a.Status == "Rejected")
+                    && a.Status == "Rejected"
+                    && (periodStart == null || taskIds.Contains(a.OfficeTaskID)))
                 .GroupBy(a => a.AssignedEmployeeID!.Value)
                 .Select(g => new { EmployeeID = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.EmployeeID, x => x.Count);
@@ -177,15 +204,19 @@ namespace TM_PE.Model
                 else if (string.Equals(task.Status, "Overdue", StringComparison.OrdinalIgnoreCase))
                 {
                     s.OverdueTasks++;
+                    // Same reasoning as the job ticket branch above: an Overdue
+                    // task must count against OnTimeRate, not vanish from it.
+                    s.OnTimeEligible++;
                 }
             }
 
             return stats;
         }
 
-        public static async Task<EmployeePerformanceStats> BuildForAsync(AppDbContext context, int employeeId)
+        public static async Task<EmployeePerformanceStats> BuildForAsync(
+            AppDbContext context, int employeeId, DateTime? periodStart = null, DateTime? periodEnd = null)
         {
-            var all = await BuildAsync(context, new[] { employeeId });
+            var all = await BuildAsync(context, new[] { employeeId }, periodStart, periodEnd);
             return all.TryGetValue(employeeId, out var s) ? s : new EmployeePerformanceStats();
         }
     }

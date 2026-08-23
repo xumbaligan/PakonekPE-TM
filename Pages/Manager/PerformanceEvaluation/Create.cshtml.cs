@@ -29,6 +29,26 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         [BindProperty]
         public List<ResultInput> Results { get; set; } = new();
 
+        // Which period's stats to show, chosen via a plain query-string GET
+        // reload (see the Month/Year <select>s in Create.cshtml) rather than
+        // an AJAX call - simplest way to recompute the period-scoped stats
+        // below without a whole client-side data layer. Defaults to the
+        // current month/year when absent (a fresh page load).
+        [BindProperty(SupportsGet = true)]
+        public int? Month { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? Year { get; set; }
+
+        // Carries the employee the manager had already picked through the
+        // Month/Year reload above, so changing the period doesn't dump them
+        // back to "Select an employee" (see Create.cshtml's reloadForPeriod).
+        [BindProperty(SupportsGet = true)]
+        public int? EmployeeId { get; set; }
+
+        // A handful of years around today for the Period Year dropdown.
+        public List<int> PeriodYearOptions { get; set; } = new();
+
         // Only Field Technicians / Office Staff can be evaluated - Admin and
         // Manager accounts are excluded from the picker.
         public List<Employee> EmployeeList { get; set; } = new();
@@ -72,6 +92,9 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
         public async Task OnGetAsync()
         {
+            Evaluation.EvaluationPeriodMonth = Month ?? DateTime.Now.Month;
+            Evaluation.EvaluationPeriodYear = Year ?? DateTime.Now.Year;
+            Evaluation.EmployeeID = EmployeeId ?? 0;
             await LoadReferenceDataAsync();
         }
 
@@ -103,6 +126,21 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 return Page();
             }
 
+            // One evaluation per employee per period - now that the period is a
+            // real Month/Year instead of typed free text, this can be checked
+            // exactly instead of relying on the manager never mistyping it.
+            bool alreadyEvaluated = await _context.PerformanceEvaluations.AnyAsync(e =>
+                e.EmployeeID == employee.EmployeeId &&
+                e.EvaluationPeriodMonth == Evaluation.EvaluationPeriodMonth &&
+                e.EvaluationPeriodYear == Evaluation.EvaluationPeriodYear);
+            if (alreadyEvaluated)
+            {
+                ModelState.AddModelError(string.Empty,
+                    $"{employee.FullName} already has an evaluation for {Evaluation.EvaluationPeriod}. Edit the existing one instead of creating a duplicate.");
+                await LoadReferenceDataAsync();
+                return Page();
+            }
+
             // Only accept scores for criteria that actually belong to this
             // employee's role type and are still active - never trust the
             // posted criteria list blindly.
@@ -111,6 +149,18 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .ToListAsync();
             var allowedIds = allowedCriteria.ToDictionary(c => c.CriteriaId);
 
+            if (status == EvaluationStatus.Finalized)
+            {
+                var workQualityError = EvaluationScoring.ValidateWorkQualityRequired(
+                    allowedCriteria, Results.Select(r => (r.CriteriaID, r.StarRating, r.Feedback)));
+                if (workQualityError != null)
+                {
+                    ModelState.AddModelError(string.Empty, workQualityError);
+                    await LoadReferenceDataAsync();
+                    return Page();
+                }
+            }
+
             var evaluation = new Model.PerformanceEvaluation
             {
                 EmployeeID = employee.EmployeeId,
@@ -118,7 +168,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 // in - never a free-text field a person could misattribute.
                 EvaluatorName = GetCurrentManagerName(),
                 EvaluationDate = Evaluation.EvaluationDate,
-                EvaluationPeriod = Evaluation.EvaluationPeriod.Trim(),
+                EvaluationPeriodMonth = Evaluation.EvaluationPeriodMonth,
+                EvaluationPeriodYear = Evaluation.EvaluationPeriodYear,
                 GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim(),
                 // Status comes from which button was pressed, not a dropdown.
                 EvaluationStatus = status,
@@ -207,8 +258,16 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .OrderByDescending(c => c.Weight)
                 .ToListAsync();
 
+            var currentYear = DateTime.Now.Year;
+            PeriodYearOptions = Enumerable.Range(currentYear - 4, 6).Reverse().ToList();
+            if (!PeriodYearOptions.Contains(Evaluation.EvaluationPeriodYear))
+            {
+                PeriodYearOptions.Insert(0, Evaluation.EvaluationPeriodYear);
+            }
+
             Stats = await EmployeePerformanceStatsBuilder.BuildAsync(
-                _context, EmployeeList.Select(e => e.EmployeeId));
+                _context, EmployeeList.Select(e => e.EmployeeId),
+                Evaluation.EvaluationPeriodStart, Evaluation.EvaluationPeriodEnd);
 
             RecommendationOptions = await _context.Recommendations
                 .OrderBy(r => r.RecommendationID)

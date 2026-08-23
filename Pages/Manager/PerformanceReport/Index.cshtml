@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Performance Report";
     Layout = Model.LayoutName;
-    var periodLabel = string.IsNullOrWhiteSpace(Model.Period) ? "All Periods" : Model.Period;
+    var periodLabel = Model.PeriodLabel;
     var averageClass = TM_PE.Model.EvaluationScoring.RatingBadgeClass(
         TM_PE.Model.EvaluationScoring.RatingFor(Model.AverageScore));
 }
@@ -25,7 +25,7 @@
                 <option value="">All Periods</option>
                 @foreach (var p in Model.PeriodOptions)
                 {
-                    <option value="@p" selected="@(Model.Period == p)">@p</option>
+                    <option value="@p.Value" selected="@(Model.Period == p.Value)">@p.Label</option>
                 }
             </select>
         </div>

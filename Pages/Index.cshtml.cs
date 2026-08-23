@@ -78,7 +78,7 @@ public class IndexModel : PageModel
         PendingJobs = tickets.Count(t => t.Status == JobTicketStatuses.Pending && !IsOverdue(t));
         InProgressJobs = tickets.Count(t => t.Status == JobTicketStatuses.InProgress && !IsOverdue(t));
         OverdueJobs = tickets.Count(IsOverdue);
-        CompletedJobs = tickets.Count(t => t.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed);
+        CompletedJobs = tickets.Count(t => t.Status == JobTicketStatuses.Completed);
         TotalActiveJobs = PendingJobs + InProgressJobs + OverdueJobs;
 
         var eligibleForRate = tickets.Count(t => t.Status != JobTicketStatuses.Cancelled);
@@ -89,7 +89,7 @@ public class IndexModel : PageModel
         // "On time" = the most recent submission that set a ticket to
         // Completed happened on or before that ticket's due date.
         var completedTicketIds = tickets
-            .Where(t => t.Status is JobTicketStatuses.Completed or JobTicketStatuses.Closed && t.DateOfCompletion.HasValue)
+            .Where(t => t.Status == JobTicketStatuses.Completed && t.DateOfCompletion.HasValue)
             .Select(t => t.JobTicketID)
             .ToHashSet();
 

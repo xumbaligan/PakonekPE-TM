@@ -12,7 +12,7 @@
     };
 }
 
-<div class="container mt-4" style="max-width: 900px;">
+
 
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
@@ -32,7 +32,7 @@
                     </h5>
                     <div class="text-muted small">View task details and manage assignees and activities.</div>
                 </div>
-                <a asp-page="./Index" class="btn-close" aria-label="Close"></a>
+              
             </div>
 
             <hr />
@@ -115,8 +115,9 @@
                         <thead>
                             <tr class="text-muted small">
                                 <th>Activity</th>
-                                <th style="width:160px;">Status</th>
+                                <th style="width:120px;">Status</th>
                                 <th style="width:160px;">Submission</th>
+                                <th style="width:200px;">Action</th>
                                 <th style="width:220px;">Feedback</th>
                             </tr>
                         </thead>
@@ -128,17 +129,18 @@
                             {
                                 @foreach (var activity in Model.OfficeTask.Activities)
                                 {
-                                    var selectClass = activity.Status switch
+                                    var statusTextClass = activity.Status switch
                                     {
-                                        "Approved" => "text-success border-success-subtle bg-success-subtle",
-                                        "Rejected" => "text-danger border-danger-subtle bg-danger-subtle",
-                                        "Submitted" => "text-info border-info-subtle bg-info-subtle",
-                                        _ => "text-secondary border-secondary-subtle bg-secondary-subtle"
+                                        "Approved" => "text-success",
+                                        "Rejected" => "text-danger",
+                                        "Submitted" => "text-info",
+                                        _ => "text-secondary"
                                     };
                                     Model.LatestSubmissions.TryGetValue(activity.ActivityID, out var submission);
                                     var isLocked = activity.Status == "Approved";
 
-                                    <tr>
+                                    <tr data-activity-row data-has-submission="@(submission != null ? "true" : "false")"
+                                        data-activity-name="@activity.ActivityName">
                                         <td class="fw-semibold">
                                             @activity.ActivityName
                                             @if (isLocked)
@@ -148,19 +150,18 @@
                                         </td>
                                         <td>
                                             <input type="hidden" name="activityIds" value="@activity.ActivityID" />
-                                            <select name="statuses" class="form-select form-select-sm fw-semibold @selectClass activity-status-select"
-                                                    data-has-submission="@(submission != null ? "true" : "false")"
-                                                    disabled="@(isLocked ? "disabled" : null)">
-                                                <option value="Pending" selected="@(activity.Status == "Pending")">Pending</option>
-                                                <option value="Approved" selected="@(activity.Status == "Approved")">Approved</option>
-                                                <option value="Rejected" selected="@(activity.Status == "Rejected")">Rejected</option>
-                                            </select>
-                                            @if (isLocked)
-                                            {
-                                                <input type="hidden" name="statuses" value="Approved" />
-                                            }
+                                            @* Staged, client-side only, until the Save button actually posts this
+                                               form - Approve/Reject never submit anything by themselves (see the
+                                               script below). Cancel navigates away without posting at all, so
+                                               nothing staged here is ever persisted unless Save is clicked. *@
+                                            <input type="hidden" name="statuses" value="@activity.Status" class="activity-status-hidden" />
+                                            <div class="fw-semibold @statusTextClass activity-status-label">
+                                                @(activity.Status == "Submitted" ? "Submitted" : activity.Status)
+                                            </div>
+                                            <div class="text-muted small activity-rejection-count" style="@(activity.Status == "Rejected" && activity.RejectionCount > 0 ? "" : "display:none;")">
+                                                Rejected @(activity.RejectionCount == 1 ? "1 time" : $"{activity.RejectionCount} times")
+                                            </div>
                                         </td>
-
                                         <td>
                                             <div class="d-flex align-items-center gap-2">
                                                 @if (submission != null)
@@ -175,6 +176,36 @@
                                                     <span class="text-muted small">No file</span>
                                                 }
                                             </div>
+                                        </td>
+                                        <td class="activity-action-cell">
+                                        @* The manager can only Approve or Reject a Submitted activity - Pending
+                                               (nothing uploaded yet) and Approved/Rejected (already decided) each
+                                               just show what's actually happening instead of an action. Clicking
+                                               either button only stages the change (see script below) - it isn't
+                                               written to the database until Save is clicked. *@
+                                        @if (activity.Status == "Submitted")
+                                        {
+                                            <div class="d-flex gap-1 activity-action-buttons">
+                                                <button type="button" class="btn btn-sm btn-outline-success activity-approve-btn">
+                                                    <i class="bi bi-check-lg"></i> Approve
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger activity-reject-btn">
+                                                    <i class="bi bi-x-lg"></i> Reject
+                                                </button>
+                                            </div>
+                                        }
+                                        else if (activity.Status == "Approved")
+                                        {
+                                            <span class="text-muted small">Locked</span>
+                                        }
+                                        else if (activity.Status == "Rejected")
+                                        {
+                                            <span class="text-muted small">Waiting re-upload</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Nothing to review</span>
+                                        }
                                         </td>
 
                                         <td>
@@ -206,34 +237,82 @@
     @* ===================== SAVE / CANCEL ===================== *@
     <div class="d-flex justify-content-end gap-2 mb-4">
         <a asp-page="./Index" class="btn btn-outline-secondary">Cancel</a>
-        <button type="submit" form="detailsForm" class="btn btn-primary">Save</button>
+        <button type="submit" form="detailsForm" asp-page-handler="Save" class="btn btn-primary">Save</button>
     </div>
-</div>
 
 <script>
     (function () {
         const form = document.getElementById('detailsForm');
         if (!form) return;
 
+        // Approve/Reject are plain buttons, not submits - clicking one only
+        // stages the change in this row's hidden "statuses" input and updates
+        // what's on screen to preview the outcome. Nothing reaches the server
+        // until the Save button at the bottom actually posts the form; Cancel
+        // navigates away without posting at all, so nothing staged here ever
+        // gets saved unless Save is clicked.
+        form.querySelectorAll('tr[data-activity-row]').forEach(function (row) {
+            const approveBtn = row.querySelector('.activity-approve-btn');
+            const rejectBtn = row.querySelector('.activity-reject-btn');
+            if (!approveBtn && !rejectBtn) return;
+
+            const statusInput = row.querySelector('.activity-status-hidden');
+            const statusLabel = row.querySelector('.activity-status-label');
+            const rejectionCount = row.querySelector('.activity-rejection-count');
+            const actionCell = row.querySelector('.activity-action-cell');
+            const feedbackInput = row.querySelector('.activity-feedback-input');
+            const activityName = row.dataset.activityName || 'This activity';
+            const hasSubmission = row.dataset.hasSubmission === 'true';
+
+            function stage(newStatus) {
+                statusInput.value = newStatus;
+                statusLabel.textContent = newStatus;
+                statusLabel.classList.remove('text-info', 'text-success', 'text-danger', 'text-secondary');
+                statusLabel.classList.add(newStatus === 'Approved' ? 'text-success' : 'text-danger');
+                if (rejectionCount) rejectionCount.style.display = 'none';
+                actionCell.innerHTML = newStatus === 'Approved'
+                    ? '<span class="text-muted small">Locked</span>'
+                    : '<span class="text-muted small">Waiting re-upload</span>';
+            }
+
+            if (approveBtn) {
+                approveBtn.addEventListener('click', function () {
+                    if (!hasSubmission) {
+                        alert(`"${activityName}" cannot be approved until the employee attaches a file.`);
+                        return;
+                    }
+                    stage('Approved');
+                });
+            }
+
+            if (rejectBtn) {
+                rejectBtn.addEventListener('click', function () {
+                    if (!hasSubmission) {
+                        alert(`"${activityName}" cannot be rejected until the employee attaches a file.`);
+                        return;
+                    }
+                    if (!feedbackInput.value.trim()) {
+                        alert(`"${activityName}" was rejected, so feedback is required.`);
+                        return;
+                    }
+                    stage('Rejected');
+                });
+            }
+        });
+
+        // Final check right before Save actually posts - catches a row staged
+        // as Rejected whose feedback was cleared afterward (the server checks
+        // this too, but this avoids the round trip).
         form.addEventListener('submit', function (e) {
-            const rows = form.querySelectorAll('tbody tr');
             const errors = [];
 
-            rows.forEach(function (row) {
-                const select = row.querySelector('.activity-status-select');
-                if (!select) return;
-
+            form.querySelectorAll('tr[data-activity-row]').forEach(function (row) {
+                const statusInput = row.querySelector('.activity-status-hidden');
                 const feedbackInput = row.querySelector('.activity-feedback-input');
-                const activityName = row.querySelector('td.fw-semibold')?.textContent?.trim() || 'This activity';
-                const hasSubmission = select.dataset.hasSubmission === 'true';
-                const status = select.value;
+                if (!statusInput) return;
 
-                if ((status === 'Approved' || status === 'Rejected') && !hasSubmission) {
-                    errors.push(`"${activityName}" cannot be ${status.toLowerCase()} until the employee attaches a file.`);
-                }
-
-                if (status === 'Rejected' && feedbackInput && !feedbackInput.value.trim()) {
-                    errors.push(`"${activityName}" was rejected, so feedback is required.`);
+                if (statusInput.value === 'Rejected' && feedbackInput && !feedbackInput.value.trim()) {
+                    errors.push(`"${row.dataset.activityName || 'This activity'}" was rejected, so feedback is required.`);
                 }
             });
 

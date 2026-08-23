@@ -60,7 +60,12 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.OverallScore");
             ModelState.Remove("Evaluation.OverallRating");
             ModelState.Remove("Evaluation.EvaluatorName");
-            ModelState.Remove("Evaluation.EvaluationPeriod");
+            // The period is fixed once an evaluation is created (see the
+            // disabled, unnamed display in Edit.cshtml) - it's never posted,
+            // so the bound Evaluation.EvaluationPeriodMonth/Year default to 0
+            // and would otherwise fail their [Range] checks below.
+            ModelState.Remove("Evaluation.EvaluationPeriodMonth");
+            ModelState.Remove("Evaluation.EvaluationPeriodYear");
             ModelState.Remove("Evaluation.EvaluationStatus");
             ModelState.Remove("Evaluation.Recommendation");
 
@@ -78,6 +83,19 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                             (c.IsActive || evaluation.Results.Select(r => r.CriteriaID).Contains(c.CriteriaId)))
                 .ToListAsync();
             var allowedIds = allowedCriteria.ToDictionary(c => c.CriteriaId);
+
+            if (status == EvaluationStatus.Finalized)
+            {
+                var workQualityError = EvaluationScoring.ValidateWorkQualityRequired(
+                    allowedCriteria, Results.Select(r => (r.CriteriaID, r.StarRating, r.Feedback)));
+                if (workQualityError != null)
+                {
+                    ModelState.AddModelError(string.Empty, workQualityError);
+                    Evaluation.EvaluationID = id;
+                    await LoadReferenceDataAsync(evaluation, useExistingScores: false);
+                    return Page();
+                }
+            }
 
             evaluation.EvaluationDate = Evaluation.EvaluationDate;
             evaluation.GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim();
@@ -149,7 +167,8 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             if (evaluation.Employee == null) { Rows = new(); return; }
 
-            Stats = await EmployeePerformanceStatsBuilder.BuildForAsync(_context, evaluation.EmployeeID);
+            Stats = await EmployeePerformanceStatsBuilder.BuildForAsync(
+                _context, evaluation.EmployeeID, evaluation.EvaluationPeriodStart, evaluation.EvaluationPeriodEnd);
 
             var existingIds = evaluation.Results.Select(r => r.CriteriaID).ToHashSet();
 

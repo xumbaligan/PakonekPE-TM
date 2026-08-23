@@ -36,6 +36,7 @@
                     How much this criterion counts toward the Overall Score in a Performance Evaluation.
                     Weights for the same Role Type should add up to 100.
                 </div>
+                <div class="form-text fw-semibold" id="weightAvailableText"></div>
             </div>
             @* Only Field Technician criteria can be auto-scored - Office Staff
                performance has no equivalent job-record metrics, so this stays
@@ -73,6 +74,35 @@
             const metricSelect = document.getElementById('metricTypeSelect');
             const usedMetricTypes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UsedFieldTechnicianMetricTypes));
 
+            // Weight already committed to other active criteria of each Role
+            // Type (excluding this one), so the remaining-percent indicator
+            // below can update as the manager edits Role Type / Weight,
+            // mirroring what CriteriaValidation will check on Save.
+            const weightUsedByRole = {
+                OfficeStaff: @Model.OfficeStaffWeightUsed.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                FieldTechnician: @Model.FieldTechnicianWeightUsed.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            };
+            const weightInput = document.getElementById('Item_Weight');
+            const weightAvailableText = document.getElementById('weightAvailableText');
+
+            function fmt(n) {
+                return Number(n.toFixed(2)).toString();
+            }
+
+            function updateWeightAvailability() {
+                const roleLabel = roleSelect.value === 'FieldTechnician' ? 'Field Technician' : 'Office Staff';
+                const used = weightUsedByRole[roleSelect.value] || 0;
+                const available = Math.max(0, 100 - used);
+                const entered = parseFloat(weightInput.value) || 0;
+                const remaining = available - entered;
+
+                weightAvailableText.textContent = 'Other active ' + roleLabel + ' criteria are using ' + fmt(used) +
+                    '% of 100% - ' + fmt(available) + '% available' +
+                    (entered > 0 ? ' (' + fmt(remaining) + '% left if saved)' : '') + '.';
+                weightAvailableText.classList.toggle('text-danger', remaining < 0);
+                weightAvailableText.classList.toggle('text-muted', remaining >= 0);
+            }
+
             function sync() {
                 const isFieldTechnician = roleSelect.value === 'FieldTechnician';
                 metricField.classList.toggle('d-none', !isFieldTechnician);
@@ -92,7 +122,10 @@
             }
 
             roleSelect.addEventListener('change', sync);
+            roleSelect.addEventListener('change', updateWeightAvailability);
+            weightInput.addEventListener('input', updateWeightAvailability);
             sync();
+            updateWeightAvailability();
         })();
     </script>
 }

@@ -155,9 +155,12 @@ namespace TM_PE.Pages.Manager.OfficeTask
         // ---------------------------------------------------------------
         // SAVE / CANCEL
         // ---------------------------------------------------------------
-        // Status and Feedback changes are staged in the form and only applied
-        // here, in one shot, when the user clicks Save. Cancel never posts,
-        // so nothing is written to the database if the user backs out.
+        // Approve/Reject (see Details.cshtml) only stage a status client-side -
+        // nothing about this task is written to the database until the manager
+        // actually clicks Save, which posts everything (every row's staged
+        // status and feedback text) in one shot. Cancel never posts at all, so
+        // clicking it discards every staged change and leaves the task exactly
+        // as it was.
         public async Task<IActionResult> OnPostSaveAsync(int officeTaskId, List<int>? activityIds, List<string>? statuses, List<string>? feedbacks)
         {
             activityIds ??= new();
@@ -228,8 +231,18 @@ namespace TM_PE.Pages.Manager.OfficeTask
                     continue;
                 }
 
-                if (i < statuses.Count && !string.IsNullOrWhiteSpace(statuses[i]))
+                // The manager can only Approve or Reject - never set an activity to any
+                // other status by hand, even via a hand-crafted POST.
+                if (i < statuses.Count && (statuses[i] == "Approved" || statuses[i] == "Rejected"))
                 {
+                    // Only counts as a fresh rejection if it's actually transitioning
+                    // into Rejected now - re-saving an already-Rejected activity
+                    // (e.g. just editing its feedback) must not inflate the count.
+                    if (statuses[i] == "Rejected" && activity.Status != "Rejected")
+                    {
+                        activity.RejectionCount++;
+                    }
+
                     activity.Status = statuses[i];
                 }
 
@@ -374,14 +387,18 @@ namespace TM_PE.Pages.Manager.OfficeTask
 
                 if (approvedCount == activities.Count)
                 {
+                    if (task.Status != "Completed") task.DateCompleted = DateTime.Now;
                     task.Status = "Completed";
                 }
                 else if (activities.Any(a => a.Status == "Approved" || a.Status == "Submitted"))
                 {
                     task.Status = "In Progress";
                 }
-                else
+                else if (task.Status != "In Progress")
                 {
+                    // Once a task has been marked In Progress, it stays there even if
+                    // rejecting the only Submitted/Approved activity leaves nothing
+                    // currently qualifying - it should never fall back to Pending.
                     task.Status = "Pending";
                 }
             }

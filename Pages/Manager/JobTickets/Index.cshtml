@@ -22,6 +22,7 @@
             <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Pending</option>
             <option value="In Progress" selected="@(Model.StatusFilter == "In Progress")">In Progress</option>
             <option value="Completed" selected="@(Model.StatusFilter == "Completed")">Completed</option>
+            <option value="Completed Late" selected="@(Model.StatusFilter == "Completed Late")">Completed Late</option>
             <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Cancelled</option>
             <option value="Rescheduled" selected="@(Model.StatusFilter == "Rescheduled")">Rescheduled</option>
             <option value="Overdue" selected="@(Model.StatusFilter == "Overdue")">Overdue</option>
@@ -60,16 +61,16 @@
                 <tr data-leader="@(leader?.FullName.ToLower() ?? "")"
                     data-jobtype="@item.JobType.ToLower()"
                     data-ticketid="@item.TicketNumber.ToLower()"
-                    data-status="@item.Status.ToLower()">
+                    data-status="@item.DisplayStatus.ToLower()">
                     <td class="text-muted">@item.TicketNumber</td>
                     <td class="fw-semibold">@item.JobType</td>
-                    <td>@(item.JobType == TM_PE.Model.JobTypes.Maintenance ? "—" : item.ClientFullName)</td>
                     <td>@(leader != null ? leader.FullName : "—")</td>
                     <td>
                         @{
-                            var badgeClass = item.Status switch
+                            var badgeClass = item.DisplayStatus switch
                             {
                                 "Completed" => "bg-success-subtle text-success",
+                                "Completed Late" => "bg-warning-subtle text-warning-emphasis",
                                 "In Progress" => "bg-info-subtle text-info",
                                 "Cancelled" => "bg-danger-subtle text-danger",
                                 "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
@@ -78,7 +79,7 @@
                             };
                         }
                         <span class="badge rounded-pill @badgeClass px-3 py-2">
-                            @item.Status
+                            @item.DisplayStatus
                         </span>
                     </td>
                     <td class="text-muted">@item.ServiceDate.ToString("M/d/yyyy")</td>
@@ -109,10 +110,11 @@
 @* ===================== VIEW MODALS ===================== *@
 @foreach (var item in Model.JobTicket)
 {
-    var modalBadgeClass = item.Status switch
+    var modalBadgeClass = item.DisplayStatus switch
     {
         "Approved" => "bg-primary-subtle text-primary",
         "Completed" => "bg-success-subtle text-success",
+        "Completed Late" => "bg-warning-subtle text-warning-emphasis",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
         "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
@@ -139,7 +141,7 @@
                         <div class="col-sm-4">
                             <div class="text-muted small">Status</div>
                             <span class="badge rounded-pill @modalBadgeClass px-3 py-2">
-                                @item.Status
+                                @item.DisplayStatus
                             </span>
                         </div>
                         <div class="col-sm-4">
@@ -153,6 +155,10 @@
                         <div class="col-sm-4">
                             <div class="text-muted small">Due Date</div>
                             <div>@(item.DateOfCompletion?.ToString("M/d/yyyy") ?? "—")</div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="text-muted small">Date Completed</div>
+                            <div>@(item.DateCompleted?.ToString("M/d/yyyy") ?? "—")</div>
                         </div>
                     </div>
 

@@ -34,6 +34,17 @@ namespace TM_PE.Model
 
         public decimal Score { get; set; } = 0;
 
+        // A Completed task whose actual completion date landed after DueDate
+        // was finished late.
+        [NotMapped]
+        public bool IsCompletedLate =>
+            Status == "Completed" && DateCompleted.HasValue && DateCompleted.Value.Date > DueDate.Date;
+
+        // What to show wherever Status is displayed: same as Status, except a
+        // late completion reads as "Completed Late" instead of "Completed".
+        [NotMapped]
+        public string DisplayStatus => IsCompletedLate ? "Completed Late" : Status;
+
         // Navigation
         public ICollection<TaskActivity> Activities { get; set; }
             = new List<TaskActivity>();

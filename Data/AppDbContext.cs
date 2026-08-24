@@ -26,7 +26,6 @@ namespace TM_PE.Data
         public DbSet<FiberPlan> FiberPlans => Set<FiberPlan>();
         public DbSet<PerformanceEvaluation> PerformanceEvaluations => Set<PerformanceEvaluation>();
         public DbSet<EvaluationResult> EvaluationResults => Set<EvaluationResult>();
-        public DbSet<Recommendation> Recommendations => Set<Recommendation>();
         public DbSet<Feedback> Feedbacks => Set<Feedback>();
         public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
@@ -62,11 +61,6 @@ namespace TM_PE.Data
             b.Entity<PerformanceEvaluation>()
                 .Property(e => e.EvaluationStatus)
                 .HasConversion<string>();
-
-            // Managers can't add the same recommendation twice.
-            b.Entity<Recommendation>()
-                .HasIndex(r => r.RecommendationName)
-                .IsUnique();
 
             // An evaluation is a historical record: if the employee it was
             // written about is later removed, keep the evaluation instead of

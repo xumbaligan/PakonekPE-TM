@@ -36,9 +36,10 @@
                 <tbody>
                     @foreach (var ticket in Model.AssignedJobOrders)
                     {
-                        var badgeClass = ticket.Status switch
+                        var badgeClass = ticket.DisplayStatus switch
                         {
                             "Completed" => "bg-success-subtle text-success",
+                            "Completed Late" => "bg-warning-subtle text-warning-emphasis",
                             "In Progress" => "bg-info-subtle text-info",
                             "Cancelled" => "bg-danger-subtle text-danger",
                             "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
@@ -54,7 +55,7 @@
                             <td>@ticket.JobType</td>
                             <td>@(ticket.JobType == TM_PE.Model.JobTypes.Maintenance ? "—" : ticket.ClientFullName)</td>
                             <td>@ticket.ServiceDate.ToString("M/d/yyyy")</td>
-                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@ticket.Status</span></td>
+                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@ticket.DisplayStatus</span></td>
                             <td>
                                 @if (isLeader)
                                 {

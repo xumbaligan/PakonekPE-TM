@@ -24,10 +24,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
         public List<CriteriaStarRow> Rows { get; set; } = new();
         public EmployeePerformanceStats Stats { get; set; } = new();
 
-        // The manager-maintained recommendation list backing the dropdown and
-        // the "Recommendations" modal.
-        public List<TM_PE.Model.Recommendation> RecommendationOptions { get; set; } = new();
-
         public async Task<IActionResult> OnGetAsync(int id)
         {
             var evaluation = await LoadEvaluationAsync(id);
@@ -67,9 +63,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             ModelState.Remove("Evaluation.EvaluationPeriodMonth");
             ModelState.Remove("Evaluation.EvaluationPeriodYear");
             ModelState.Remove("Evaluation.EvaluationStatus");
-            ModelState.Remove("Evaluation.Recommendation");
-
-            var recommendation = await ResolveRecommendationAsync(Evaluation.Recommendation);
 
             if (!ModelState.IsValid)
             {
@@ -100,7 +93,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             evaluation.EvaluationDate = Evaluation.EvaluationDate;
             evaluation.GeneralFeedback = string.IsNullOrWhiteSpace(Evaluation.GeneralFeedback) ? null : Evaluation.GeneralFeedback.Trim();
             evaluation.EvaluationStatus = status;
-            evaluation.Recommendation = recommendation;
 
             _context.EvaluationResults.RemoveRange(evaluation.Results);
             evaluation.Results.Clear();
@@ -130,29 +122,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
             return RedirectToPage("Details", new { id = evaluation.EvaluationID });
         }
 
-
-        // A recommendation is stored as text, but it still has to be one the
-        // manager actually put on the list - never free text from the wire.
-        private async Task<string?> ResolveRecommendationAsync(string? posted)
-        {
-            var name = (posted ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(name)) return null;
-
-            if (!await _context.Recommendations.AnyAsync(r => r.RecommendationName == name))
-            {
-                ModelState.AddModelError("Evaluation.Recommendation", "Please select a valid recommendation.");
-                return null;
-            }
-
-            return name;
-        }
-
-        public async Task<IActionResult> OnPostAddRecommendationAsync(string recommendationName) =>
-            await RecommendationListActions.AddAsync(_context, recommendationName);
-
-        public async Task<IActionResult> OnPostDeleteRecommendationAsync(int id) =>
-            await RecommendationListActions.DeleteAsync(_context, id);
-
         private Task<Model.PerformanceEvaluation?> LoadEvaluationAsync(int id) =>
             _context.PerformanceEvaluations
                 .Include(e => e.Employee)
@@ -161,10 +130,6 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
         private async Task LoadReferenceDataAsync(Model.PerformanceEvaluation evaluation, bool useExistingScores)
         {
-            RecommendationOptions = await _context.Recommendations
-                .OrderBy(r => r.RecommendationID)
-                .ToListAsync();
-
             if (evaluation.Employee == null) { Rows = new(); return; }
 
             Stats = await EmployeePerformanceStatsBuilder.BuildForAsync(

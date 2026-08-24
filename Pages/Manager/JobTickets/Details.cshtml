@@ -4,9 +4,10 @@
 @{
     ViewData["Title"] = "Job Ticket Details";
     Layout = "_Layout";
-    var badgeClass = Model.JobTicket.Status switch
+    var badgeClass = Model.JobTicket.DisplayStatus switch
     {
         "Completed" => "bg-success-subtle text-success",
+        "Completed Late" => "bg-warning-subtle text-warning-emphasis",
         "In Progress" => "bg-info-subtle text-info",
         "Cancelled" => "bg-danger-subtle text-danger",
         "Rescheduled" => "bg-warning-subtle text-warning-emphasis",
@@ -45,7 +46,7 @@
             </div>
             <div class="col-sm-3">
                 <div class="text-muted small">Status</div>
-                <span class="badge rounded-pill @badgeClass px-3 py-2">@Model.JobTicket.Status</span>
+                <span class="badge rounded-pill @badgeClass px-3 py-2">@Model.JobTicket.DisplayStatus</span>
             </div>
             <div class="col-sm-3">
                 <div class="text-muted small">Due Date</div>

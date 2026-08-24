@@ -35,9 +35,10 @@
                 <tbody>
                     @foreach (var task in Model.AssignedTasks)
                     {
-                        var badgeClass = task.Status switch
+                        var badgeClass = task.DisplayStatus switch
                         {
                             "Completed" => "bg-success-subtle text-success",
+                            "Completed Late" => "bg-warning-subtle text-warning-emphasis",
                             "In Progress" => "bg-info-subtle text-info",
                             "Overdue" => "bg-danger-subtle text-danger",
                             _ => "bg-secondary-subtle text-secondary"
@@ -56,7 +57,7 @@
                                 <div class="text-muted small">TSK-@task.OfficeTaskID.ToString("D5")</div>
                             </td>
                             <td>@task.DueDate.ToString("M/d/yyyy")</td>
-                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@task.Status</span></td>
+                            <td><span class="badge rounded-pill @badgeClass px-3 py-2">@task.DisplayStatus</span></td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="progress flex-grow-1" style="height:8px; min-width:80px;">

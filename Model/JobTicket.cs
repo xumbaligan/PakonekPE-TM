@@ -44,6 +44,13 @@ namespace TM_PE.Model
         public const string Rescheduled = "Rescheduled";
         public const string Overdue = "Overdue";
 
+        // Never stored - purely a display label for a Completed ticket whose
+        // DateCompleted landed after its DateOfCompletion deadline (see
+        // JobTicket.IsCompletedLate/DisplayStatus below). Status itself stays
+        // "Completed" so every existing Completed check (locking, dashboards,
+        // performance stats) keeps working unchanged.
+        public const string CompletedLate = "Completed Late";
+
         public static readonly string[] Allowed = { Pending, InProgress, Completed, Cancelled, RescheduleRequest };
     }
 
@@ -189,6 +196,20 @@ namespace TM_PE.Model
         // JobTicketOverdueChecker) — for manager actions that are gated on
         // "still Pending" (e.g. re-designating the leader on the Edit page),
         // an Overdue ticket that was Pending should be treated the same way.
+        // A Completed ticket whose actual completion date landed after the
+        // deadline (DateOfCompletion) was finished late.
+        [NotMapped]
+        public bool IsCompletedLate =>
+            Status == JobTicketStatuses.Completed
+            && DateCompleted.HasValue
+            && DateOfCompletion.HasValue
+            && DateCompleted.Value.Date > DateOfCompletion.Value.Date;
+
+        // What to show wherever Status is displayed: same as Status, except a
+        // late completion reads as "Completed Late" instead of "Completed".
+        [NotMapped]
+        public string DisplayStatus => IsCompletedLate ? JobTicketStatuses.CompletedLate : Status;
+
         [NotMapped]
         public bool IsPendingOrOverdue =>
             Status == JobTicketStatuses.Pending || Status == JobTicketStatuses.Overdue;

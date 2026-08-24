@@ -66,16 +66,6 @@
             }
         }
 
-        // ---- Appraisal recommendation ----
-        const recBadge = document.getElementById('evalRecommendation');
-        if (recBadge) {
-            const rec = (d.recommendation || '').trim();
-            recBadge.textContent = rec || 'No recommendation';
-            recBadge.className = 'badge ' + (rec && rec !== 'No recommendation'
-                ? 'bg-primary-subtle text-primary-emphasis'
-                : 'bg-secondary-subtle text-secondary-emphasis');
-        }
-
         const feedback = document.getElementById('evalFeedback');
         if (feedback) {
             feedback.textContent = d.feedback && d.feedback.trim() ? d.feedback : 'No feedback recorded.';

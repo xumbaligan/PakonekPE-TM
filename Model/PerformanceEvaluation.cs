@@ -19,8 +19,7 @@ namespace TM_PE.Model
     //
     // The appraisal decision lives directly on the evaluation instead of being a
     // separate module: one Evaluation Date (also the appraisal date), one Status
-    // (also the appraisal status), one Feedback field, and one Recommendation
-    // chosen from the manager-maintained list.
+    // (also the appraisal status), and one Feedback field.
     [Table("tbl_performanceevaluation")]
     public class PerformanceEvaluation
     {
@@ -80,13 +79,6 @@ namespace TM_PE.Model
         [StringLength(1000)]
         public string? GeneralFeedback { get; set; }
 
-        // The appraisal recommendation, picked from the manager-maintained list
-        // in tbl_recommendation. Stored as the recommendation's text rather than
-        // a foreign key (exactly like JobTicket.FiberPlan), so removing an entry
-        // from that list never rewrites evaluations that already used it.
-        [StringLength(RecommendationRules.MaxLength)]
-        public string? Recommendation { get; set; }
-
         [Column(TypeName = "nvarchar(20)")]
         public EvaluationStatus EvaluationStatus { get; set; } = EvaluationStatus.Draft;
 
@@ -101,10 +93,6 @@ namespace TM_PE.Model
 
         [NotMapped]
         public bool IsFinalized => EvaluationStatus == EvaluationStatus.Finalized;
-
-        [NotMapped]
-        public string RecommendationDisplay =>
-            string.IsNullOrWhiteSpace(Recommendation) ? "No recommendation" : Recommendation;
     }
 
     // One scored criterion within a Performance Evaluation.

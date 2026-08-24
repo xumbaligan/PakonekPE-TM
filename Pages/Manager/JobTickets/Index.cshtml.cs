@@ -29,6 +29,7 @@ namespace TM_PE.Pages.Manager.JobTickets
                     .ThenInclude(a => a.Employee)
                 .Include(t => t.Submissions)
                 .Include(t => t.RescheduleHistory)
+                .Include(t => t.AssignedByEmployee)
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();
 

@@ -50,6 +50,16 @@
                     <input type="hidden" asp-for="JobTicket.DateCreated" />
                 </div>
 
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                        Assigned By
+                    </label>
+
+                    <input class="form-control"
+                           value="@Model.CurrentManagerName"
+                           disabled />
+                </div>
+
             </div>
 
             <!-- Job Type -->
@@ -146,7 +156,7 @@
                     <textarea asp-for="JobTicket.Description"
                               id="descriptionInput"
                               class="form-control"
-                              rows="1"
+                              rows="4"
                               maxlength="500"
                               placeholder="Describe the job"></textarea>
 

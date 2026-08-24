@@ -40,6 +40,10 @@ namespace TM_PE.Pages.Manager.JobTickets
         // Read-only preview of the ticket number that will be generated on save
         public string NextTicketNumber { get; set; } = string.Empty;
 
+        // The logged-in manager creating this ticket - shown read-only and saved
+        // automatically as JobTicket.AssignedByEmployeeID, never chosen from the form.
+        public string CurrentManagerName { get; set; } = "Manager";
+
         // Manager-maintained fiber plan options (see the "Fiber Plans" modal on this
         // page) — loaded fresh from tbl_fiberplan on every GET/failed POST since
         // managers can add/remove entries at any time.
@@ -49,8 +53,12 @@ namespace TM_PE.Pages.Manager.JobTickets
 
         public async Task OnGetAsync()
         {
+            // Only technicians who actually have a login can be assigned — a
+            // technician with no user account has no way to see or act on the
+            // job once assigned.
             FieldTechnicianList = await _context.Employees
-                .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician)
+                .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician
+                    && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                 .OrderBy(e => e.FullName)
                 .ToListAsync();
 
@@ -60,8 +68,13 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             JobTicket.DateCreated = DateTime.Now;
             JobTicket.ServiceDate = DateTime.Now;
-            JobTicket.DateOfCompletion = DateTime.Now;
+            // Default the deadline two days out rather than same-day, so a
+            // fresh ticket doesn't start out already due (or overdue the
+            // moment the service date passes) - the manager can still pick
+            // an earlier or later date before saving.
+            JobTicket.DateOfCompletion = DateTime.Now.AddDays(2);
             NextTicketNumber = await GenerateTicketNumberAsync();
+            CurrentManagerName = HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -146,29 +159,32 @@ namespace TM_PE.Pages.Manager.JobTickets
             if (LeaderEmployeeId != 0 && !SelectedEmployeeIds.Contains(LeaderEmployeeId))
                 ModelState.AddModelError(string.Empty, "The leader must be one of the assigned field technicians.");
 
-            // Only active Field Technicians may be assigned, even if the request was tampered with.
+            // Only active Field Technicians with a user account may be assigned, even if the request was tampered with.
             List<int> validEmployeeIds = new();
             if (SelectedEmployeeIds.Any())
             {
                 validEmployeeIds = await _context.Employees
-                    .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician && SelectedEmployeeIds.Contains(e.EmployeeId))
+                    .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician && SelectedEmployeeIds.Contains(e.EmployeeId)
+                        && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                     .Select(e => e.EmployeeId)
                     .ToListAsync();
 
                 if (SelectedEmployeeIds.Except(validEmployeeIds).Any())
-                    ModelState.AddModelError(string.Empty, "Job tickets can only be assigned to active Field Technicians.");
+                    ModelState.AddModelError(string.Empty, "Job tickets can only be assigned to active Field Technicians who have a user account.");
             }
 
             if (!ModelState.IsValid)
             {
                 FieldTechnicianList = await _context.Employees
-                    .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician)
+                    .Where(e => e.IsActive && e.RoleType == RoleType.FieldTechnician
+                        && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                     .OrderBy(e => e.FullName)
                     .ToListAsync();
                 FiberPlanOptions = await _context.FiberPlans
                     .OrderBy(f => f.FiberPlanID)
                     .ToListAsync();
                 NextTicketNumber = await GenerateTicketNumberAsync();
+                CurrentManagerName = HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
 
                 // Re-hydrate the previously-selected assignees (in the order they
                 // were submitted) so the Create page can restore them instead of
@@ -184,6 +200,7 @@ namespace TM_PE.Pages.Manager.JobTickets
 
             JobTicket.TicketNumber = await GenerateTicketNumberAsync();
             JobTicket.Status = JobTicketStatuses.Pending;
+            JobTicket.AssignedByEmployeeID = HttpContext.Session.GetInt32("AuthEmployeeId");
 
             _context.JobTickets.Add(JobTicket);
             await _context.SaveChangesAsync(); // generates JobTicket.JobTicketID

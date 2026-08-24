@@ -88,6 +88,8 @@ namespace TM_PE.Pages.FieldTechnician
                 .Include(t => t.Assignments).ThenInclude(a => a.Employee)
                 .Include(t => t.Submissions).ThenInclude(s => s.Employee)
                 .Include(t => t.SubmissionHistory).ThenInclude(h => h.ArchivedSubmissions).ThenInclude(s => s.Employee)
+                .Include(t => t.SubmissionHistory).ThenInclude(h => h.ActorEmployee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(t => t.JobTicketID == id);
 
             if (ticket == null)
@@ -479,7 +481,8 @@ namespace TM_PE.Pages.FieldTechnician
                 Remarks = string.IsNullOrWhiteSpace(remarks)
                     ? null
                     : remarks.Trim(),
-                DateChanged = DateTime.Now
+                DateChanged = DateTime.Now,
+                ActorEmployeeID = employeeId.Value
             };
 
             var currentSubmissions = ticket.Submissions

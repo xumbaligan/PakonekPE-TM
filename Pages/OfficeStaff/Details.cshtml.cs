@@ -24,6 +24,10 @@ namespace TM_PE.Pages.OfficeStaff
         // Latest submission per ActivityID (for the Submission column)
         public Dictionary<int, ActivitySubmission> LatestSubmissions { get; set; } = new();
 
+        // Every attempt ever made per ActivityID, newest first - for the
+        // "History of Submission" modal (see Pages/Shared/_ActivitySubmissionHistoryModal.cshtml).
+        public Dictionary<int, List<ActivitySubmission>> SubmissionHistory { get; set; } = new();
+
         [TempData]
         public string? ErrorMessage { get; set; }
 
@@ -55,6 +59,7 @@ namespace TM_PE.Pages.OfficeStaff
             var task = await _context.OfficeTasks
                 .Include(t => t.Assignments).ThenInclude(a => a.Employee)
                 .Include(t => t.Activities).ThenInclude(a => a.AssignedEmployee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(t => t.OfficeTaskID == id);
 
             if (task == null)
@@ -73,12 +78,20 @@ namespace TM_PE.Pages.OfficeStaff
             OfficeTask = task;
 
             var activityIds = task.Activities.Select(a => a.ActivityID).ToList();
-            LatestSubmissions = await _context.ActivitySubmissions
+            var allSubmissions = await _context.ActivitySubmissions
+                .Include(s => s.Employee)
+                .Include(s => s.ReviewedByEmployee)
                 .Where(s => activityIds.Contains(s.ActivityID))
                 .OrderByDescending(s => s.DateSubmitted)
+                .ToListAsync();
+
+            LatestSubmissions = allSubmissions
                 .GroupBy(s => s.ActivityID)
-                .Select(g => g.First())
-                .ToDictionaryAsync(s => s.ActivityID, s => s);
+                .ToDictionary(g => g.Key, g => g.First());
+
+            SubmissionHistory = allSubmissions
+                .GroupBy(s => s.ActivityID)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             return Page();
         }
@@ -160,30 +173,20 @@ namespace TM_PE.Pages.OfficeStaff
 
             var relativePath = Path.Combine("uploads", "activity-submissions", safeFileName).Replace("\\", "/");
 
-            // One submission record per activity: replace the previous file if one exists
-            var existing = await _context.ActivitySubmissions
-                .FirstOrDefaultAsync(s => s.ActivityID == activityId);
-
-            if (existing != null)
+            // Every upload is its own attempt, kept forever - never overwrite a
+            // previous submission. Before this, re-uploading replaced the one
+            // row in place, silently erasing the prior file and whatever
+            // feedback/reviewer/reviewed-date the manager had already recorded
+            // against it.
+            _context.ActivitySubmissions.Add(new ActivitySubmission
             {
-                existing.FileName = submissionFile.FileName;
-                existing.FilePath = relativePath;
-                existing.DateSubmitted = DateTime.Now;
-                existing.Status = "Pending Review";
-                existing.EmployeeID = employeeId.Value;
-            }
-            else
-            {
-                _context.ActivitySubmissions.Add(new ActivitySubmission
-                {
-                    ActivityID = activityId,
-                    EmployeeID = employeeId.Value,
-                    FileName = submissionFile.FileName,
-                    FilePath = relativePath,
-                    DateSubmitted = DateTime.Now,
-                    Status = "Pending Review"
-                });
-            }
+                ActivityID = activityId,
+                EmployeeID = employeeId.Value,
+                FileName = submissionFile.FileName,
+                FilePath = relativePath,
+                DateSubmitted = DateTime.Now,
+                Status = "Pending Review"
+            });
 
             // The uploader claims the activity (a no-op for tasks with only one assignee,
             // who already owns every activity).
@@ -200,6 +203,89 @@ namespace TM_PE.Pages.OfficeStaff
                 }
 
                 activity.Status = "Submitted";
+            }
+
+            await _context.SaveChangesAsync();
+            await RecalculateTaskAsync(officeTaskId);
+
+            return RedirectToPage(new { id = officeTaskId });
+        }
+
+        // Lets the employee take back a file they uploaded by mistake, as long
+        // as no manager has reviewed it yet - once it's Approved or Rejected,
+        // that decision (and any feedback) is permanent history and can no
+        // longer be undone.
+        public async Task<IActionResult> OnPostRemoveSubmissionAsync(int submissionId, int officeTaskId)
+        {
+            var employeeId = HttpContext.Session.GetInt32("CurrentEmployeeId");
+            if (employeeId == null)
+            {
+                return RedirectToPage("./Select");
+            }
+
+            var task = await _context.OfficeTasks
+                .Include(t => t.Assignments)
+                .FirstOrDefaultAsync(t => t.OfficeTaskID == officeTaskId);
+
+            if (task == null)
+            {
+                return NotFound();
+            }
+
+            bool isAssignedToTask = task.Assignments.Any(a => a.EmployeeID == employeeId.Value);
+            if (!isAssignedToTask)
+            {
+                ErrorMessage = "You are not assigned to that task.";
+                return RedirectToPage(new { id = officeTaskId });
+            }
+
+            var submission = await _context.ActivitySubmissions
+                .Include(s => s.Activity)
+                .FirstOrDefaultAsync(s => s.SubmissionID == submissionId);
+
+            if (submission == null || submission.Activity == null || submission.Activity.OfficeTaskID != officeTaskId)
+            {
+                return NotFound();
+            }
+
+            if (submission.Status != "Pending Review")
+            {
+                ErrorMessage = "This file has already been reviewed and can no longer be removed.";
+                return RedirectToPage(new { id = officeTaskId });
+            }
+
+            bool soleAssignee = task.Assignments.Count == 1;
+            var activity = submission.Activity;
+
+            if (!soleAssignee && activity.AssignedEmployeeID.HasValue && activity.AssignedEmployeeID.Value != employeeId.Value)
+            {
+                ErrorMessage = "You can only remove a file you uploaded yourself.";
+                return RedirectToPage(new { id = officeTaskId });
+            }
+
+            _context.ActivitySubmissions.Remove(submission);
+            await _context.SaveChangesAsync();
+
+            // Fall back to whatever the previous attempt looked like, if there
+            // was one, instead of assuming the activity is now brand new - e.g.
+            // removing a fresh re-upload should put a previously Rejected
+            // activity right back to "waiting re-upload", not silently erase
+            // that it was ever rejected.
+            var priorAttempt = await _context.ActivitySubmissions
+                .Where(s => s.ActivityID == activity.ActivityID)
+                .OrderByDescending(s => s.DateSubmitted)
+                .FirstOrDefaultAsync();
+
+            if (priorAttempt != null)
+            {
+                activity.Status = priorAttempt.Status;
+                activity.FeedBack = priorAttempt.Feedback ?? string.Empty;
+            }
+            else
+            {
+                activity.Status = "Pending";
+                activity.AssignedEmployeeID = null;
+                activity.FeedBack = string.Empty;
             }
 
             await _context.SaveChangesAsync();

@@ -33,16 +33,28 @@ namespace TM_PE.Pages.Manager.OfficeTask
         // Read-only preview of the task number that will be generated on save
         public string NextTaskNumber { get; set; } = string.Empty;
 
+        // The logged-in manager creating this task - shown read-only and saved
+        // automatically as OfficeTask.AssignedByEmployeeID, never chosen from the form.
+        public string CurrentManagerName { get; set; } = "Manager";
+
         public async Task OnGetAsync()
         {
-            // Only active Office Staff can be assigned to an office task.
+            // Only active Office Staff who actually have a login can be assigned —
+            // a staff member with no user account has no way to see or act on the
+            // task once assigned.
             EmployeeList = await _context.Employees
-                .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff)
+                .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff
+                    && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                 .OrderBy(e => e.FullName) // adjust to match your Employee model's name property
                 .ToListAsync();
 
             OfficeTask.DateCreated = DateTime.Now;
+            // Default the due date two days out rather than same-day as
+            // DateCreated, so a fresh task doesn't start out already due -
+            // the manager can still pick an earlier or later date before saving.
+            OfficeTask.DueDate = DateTime.Now.AddDays(2);
             NextTaskNumber = await GenerateTaskNumberAsync();
+            CurrentManagerName = HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -63,31 +75,35 @@ namespace TM_PE.Pages.Manager.OfficeTask
             if (!Activities.Any())
                 ModelState.AddModelError(string.Empty, "Please add at least one activity.");
 
-            // Only active Office Staff may be assigned, even if the request was tampered with.
+            // Only active Office Staff with a user account may be assigned, even if the request was tampered with.
             if (SelectedEmployeeIds.Any())
             {
                 var validEmployeeIds = await _context.Employees
-                    .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff && SelectedEmployeeIds.Contains(e.EmployeeId))
+                    .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff && SelectedEmployeeIds.Contains(e.EmployeeId)
+                        && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                     .Select(e => e.EmployeeId)
                     .ToListAsync();
 
                 if (SelectedEmployeeIds.Except(validEmployeeIds).Any())
-                    ModelState.AddModelError(string.Empty, "Tasks can only be assigned to active Office Staff employees.");
+                    ModelState.AddModelError(string.Empty, "Tasks can only be assigned to active Office Staff employees who have a user account.");
             }
 
             if (!ModelState.IsValid)
             {
                 EmployeeList = await _context.Employees
-                    .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff)
+                    .Where(e => e.IsActive && e.RoleType == RoleType.OfficeStaff
+                        && _context.UserAccounts.Any(a => a.EmployeeID == e.EmployeeId))
                     .OrderBy(e => e.FullName)
                     .ToListAsync();
                 NextTaskNumber = await GenerateTaskNumberAsync();
+                CurrentManagerName = HttpContext.Session.GetString("AuthEmployeeName") ?? "Manager";
                 return Page();
             }
 
             OfficeTask.TaskNumber = await GenerateTaskNumberAsync();
             OfficeTask.Status = "Pending";
             OfficeTask.Progress = 0;
+            OfficeTask.AssignedByEmployeeID = HttpContext.Session.GetInt32("AuthEmployeeId");
 
             _context.OfficeTasks.Add(OfficeTask);
             await _context.SaveChangesAsync(); // generates OfficeTask.OfficeTaskID

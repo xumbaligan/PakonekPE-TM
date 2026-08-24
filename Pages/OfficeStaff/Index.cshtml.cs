@@ -38,6 +38,7 @@ namespace TM_PE.Pages.OfficeStaff
 
             AssignedTasks = await _context.OfficeTasks
                 .Include(t => t.Activities)
+                .Include(t => t.AssignedByEmployee)
                 .Where(t => t.Assignments.Any(a => a.EmployeeID == employeeId.Value))
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();

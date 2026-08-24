@@ -5,6 +5,23 @@
     Layout = "_Layout";
 }
 
+<style>
+    /* Employee Workload Summary tables: fixed, equal height with their own
+       vertical scrollbar so a long employee list scrolls in place instead of
+       expanding the table/card. */
+    .wlm-summary-scroll {
+        max-height: 360px;
+        overflow-y: auto;
+    }
+
+    .wlm-summary-scroll thead th {
+        position: sticky;
+        top: 0;
+        background-color: var(--bs-body-bg, #fff);
+        z-index: 1;
+    }
+</style>
+
 <h2 class="mb-4">Workload Monitoring</h2>
 
 <ul class="nav nav-tabs mb-3" id="wlmTabs" role="tablist">
@@ -144,7 +161,7 @@
             }
             else
             {
-                <div class="table-responsive">
+                <div class="table-responsive wlm-summary-scroll">
                     <table class="table align-middle table-hover mb-0">
                         <thead>
                             <tr class="text-muted small">
@@ -218,7 +235,7 @@
             }
             else
             {
-                <div class="table-responsive">
+                <div class="table-responsive wlm-summary-scroll">
                     <table class="table align-middle table-hover mb-0">
                         <thead>
                             <tr class="text-muted small">

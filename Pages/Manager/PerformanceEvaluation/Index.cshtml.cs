@@ -13,6 +13,13 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
         public List<Model.PerformanceEvaluation> Evaluations { get; set; } = new();
 
+        // Performance snapshot (Completed/On-time/Rescheduled-or-Rejected/
+        // Cancelled-or-Overdue) for the shared "view full evaluation" modal -
+        // scoped to each evaluation's own period, not an all-time total, since
+        // the modal is about what happened during that specific period. Keyed
+        // by EvaluationID since a period's stats can differ per evaluation.
+        public Dictionary<int, EmployeePerformanceStats> EvaluationStats { get; set; } = new();
+
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
         [BindProperty(SupportsGet = true)]
@@ -43,6 +50,23 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
                 .OrderByDescending(e => e.EvaluationDate)
                 .ThenByDescending(e => e.EvaluationID)
                 .ToListAsync();
+
+            // Batched per distinct period rather than per evaluation - many
+            // evaluations across different employees commonly share the same
+            // period (e.g. everyone evaluated for "August 2026"), even though
+            // each employee only ever has one evaluation per period.
+            foreach (var periodGroup in Evaluations.GroupBy(e => (e.EvaluationPeriodMonth, e.EvaluationPeriodYear)))
+            {
+                var sample = periodGroup.First();
+                var periodStats = await EmployeePerformanceStatsBuilder.BuildAsync(
+                    _context, periodGroup.Select(e => e.EmployeeID),
+                    sample.EvaluationPeriodStart, sample.EvaluationPeriodEnd);
+
+                foreach (var e in periodGroup)
+                {
+                    EvaluationStats[e.EvaluationID] = periodStats.GetValueOrDefault(e.EmployeeID) ?? new EmployeePerformanceStats();
+                }
+            }
         }
 
         // Small DTOs for the View modal - only what the modal needs, serialized

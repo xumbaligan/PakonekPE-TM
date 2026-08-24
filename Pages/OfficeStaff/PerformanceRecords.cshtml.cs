@@ -26,6 +26,12 @@ namespace TM_PE.Pages.OfficeStaff
 
         public EmployeePerformanceStats Stats { get; set; } = new();
 
+        // Performance snapshot for the shared "view full evaluation" modal -
+        // scoped to each evaluation's own period rather than the all-time
+        // Stats above, since the modal is about what happened during that
+        // specific period. Keyed by EvaluationID.
+        public Dictionary<int, EmployeePerformanceStats> EvaluationStats { get; set; } = new();
+
         public int EvaluationsCompleted => Evaluations.Count;
 
         public decimal OverallScore => Evaluations.Any()
@@ -44,6 +50,16 @@ namespace TM_PE.Pages.OfficeStaff
             .Select(e => e.EvaluationDate.Year)
             .Distinct()
             .OrderByDescending(y => y)
+            .ToList();
+
+        // Evaluation Periods present in the history, newest first, for a more
+        // precise filter than Year alone - there's at most one evaluation per
+        // period, so this pins down a single row instead of a whole year's
+        // worth. Evaluations is already ordered newest first, so Distinct()
+        // here preserves that order.
+        public List<string> Periods => Evaluations
+            .Select(e => e.EvaluationPeriod)
+            .Distinct()
             .ToList();
 
         public async Task<IActionResult> OnGetAsync()
@@ -80,6 +96,12 @@ namespace TM_PE.Pages.OfficeStaff
                 .ToListAsync();
 
             Stats = await EmployeePerformanceStatsBuilder.BuildForAsync(_context, employeeId.Value);
+
+            foreach (var e in Evaluations)
+            {
+                EvaluationStats[e.EvaluationID] = await EmployeePerformanceStatsBuilder.BuildForAsync(
+                    _context, employeeId.Value, e.EvaluationPeriodStart, e.EvaluationPeriodEnd);
+            }
 
             return Page();
         }

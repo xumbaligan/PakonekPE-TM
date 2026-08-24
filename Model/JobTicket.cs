@@ -157,6 +157,15 @@ namespace TM_PE.Model
         // until then. Distinct from DateOfCompletion (the deadline) above.
         public DateTime? DateCompleted { get; set; }
 
+        // The manager who created this ticket - set automatically from the
+        // logged-in manager's session at creation time (see JobTickets
+        // CreateModel.OnPostAsync), never chosen from a form field. Null only
+        // for tickets that predate this field.
+        public int? AssignedByEmployeeID { get; set; }
+
+        [ForeignKey(nameof(AssignedByEmployeeID))]
+        public Employee? AssignedByEmployee { get; set; }
+
         // Free-text address entered directly by the manager.
         [Required(ErrorMessage = "Location address is required.")]
         [StringLength(300)]
@@ -178,9 +187,11 @@ namespace TM_PE.Model
         // Once the field technician leader marks the job Completed, the ticket is
         // locked from further edits/status changes by anyone — field technician
         // or manager. Completed is terminal; there is no separate "close" step.
+        // Cancelled is equally terminal - there's nothing left to schedule,
+        // reassign, or update once a job has been called off.
         [NotMapped]
         public bool IsLockedFromEditing =>
-            Status == JobTicketStatuses.Completed;
+            Status == JobTicketStatuses.Completed || Status == JobTicketStatuses.Cancelled;
 
         // Field technicians additionally cannot upload files or change
         // Status/Remarks while a Reschedule Request they submitted is still

@@ -28,6 +28,7 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.Employee)
                 .Include(t => t.Activities)
+                .Include(t => t.AssignedByEmployee)
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();
 

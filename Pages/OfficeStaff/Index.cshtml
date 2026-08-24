@@ -27,6 +27,7 @@
                         <th class="ps-3">Task</th>
                         <th>Due Date</th>
                         <th>Status</th>
+                        <th>Assigned By</th>
                         <th style="width:180px;">Overall Progress</th>
                         <th>Your Activities</th>
                         <th class="text-end pe-3">Action</th>
@@ -58,6 +59,7 @@
                             </td>
                             <td>@task.DueDate.ToString("M/d/yyyy")</td>
                             <td><span class="badge rounded-pill @badgeClass px-3 py-2">@task.DisplayStatus</span></td>
+                            <td class="text-muted">@(task.AssignedByEmployee?.FullName ?? "—")</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="progress flex-grow-1" style="height:8px; min-width:80px;">

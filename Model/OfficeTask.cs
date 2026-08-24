@@ -28,6 +28,15 @@ namespace TM_PE.Model
         // above, which is just the deadline.
         public DateTime? DateCompleted { get; set; }
 
+        // The manager who created this task - set automatically from the
+        // logged-in manager's session at creation time (see OfficeTask
+        // CreateModel.OnPostAsync), never chosen from a form field. Null only
+        // for tasks that predate this field.
+        public int? AssignedByEmployeeID { get; set; }
+
+        [ForeignKey(nameof(AssignedByEmployeeID))]
+        public Employee? AssignedByEmployee { get; set; }
+
         public string Status { get; set; } = "Pending";
 
         public decimal Progress { get; set; } = 0;

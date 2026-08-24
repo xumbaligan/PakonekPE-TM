@@ -94,6 +94,10 @@
                     <div>@Model.JobTicket.DateCompleted.Value.ToString("M/d/yyyy")</div>
                 </div>
             }
+            <div class="col-sm-3">
+                <div class="text-muted small">Assigned By</div>
+                <div>@(Model.JobTicket.AssignedByEmployee?.FullName ?? "—")</div>
+            </div>
         </div>
 
         @if (Model.JobTicket.JobType != TM_PE.Model.JobTypes.Maintenance)
@@ -249,7 +253,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
     </div>
 }
 
-@* ===================== HISTORY OF SUBMISSION ===================== *@
+@* ===================== TICKET HISTORY ===================== *@
 @* Hidden entirely until the leader has actually submitted something for
    this job order — no empty-state placeholder while it's still Pending
    with nothing submitted yet. *@
@@ -263,16 +267,31 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
         "Rescheduled" => "bg-primary-subtle text-primary",
         _ => "bg-secondary-subtle text-secondary"
     };
+
+    // A "Rescheduled" entry is always logged by the manager (see Manager
+    // JobTickets EditModel.OnPostAsync); every other status update here is
+    // always logged by this ticket's field technician leader (see
+    // OnPostSaveAsync) - either way, name the actor's role explicitly rather
+    // than just their name.
+    Func<TM_PE.Model.JobTicketSubmissionHistory, string> actorLabel = h =>
+    {
+        if (h.ActorEmployee == null) return "—";
+        var roleLabel = h.ActorEmployee.RoleType == TM_PE.Model.RoleType.Manager
+            ? "Manager"
+            : "Field Technician Leader";
+        return $"{roleLabel} {h.ActorEmployee.FullName}";
+    };
 }
 @if (Model.JobTicket.SubmissionHistory != null && Model.JobTicket.SubmissionHistory.Any())
 {
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body p-4">
-            <h6 class="fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> History of Submission</h6>
+            <h6 class="fw-bold mb-1"><i class="bi bi-clock-history me-1"></i> Ticket History</h6>
             <p class="text-muted small mb-3">
-                Every status update the team leader has saved for this job order, in order.
-                Click <strong>View</strong> on any row to see the full details for that update,
-                including whatever photos or files were attached at the time.
+                Every status update logged for this job order - by the team leader or by the
+                manager - in order. Click <strong>View</strong> on any row to see the full
+                details for that update, including whatever photos or files were attached at
+                the time.
             </p>
 
             <div class="table-responsive">
@@ -280,6 +299,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                     <thead>
                         <tr>
                             <th>Status</th>
+                            <th>Actor</th>
                             <th>Remarks</th>
                             <th>Date Changed</th>
                             <th class="text-end">Action</th>
@@ -292,6 +312,7 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                                 <td>
                                     <span class="badge rounded-pill @historyBadgeClass(h.Status) px-3 py-1">@h.Status</span>
                                 </td>
+                                <td class="small text-nowrap">@actorLabel(h)</td>
                                 <td class="text-truncate" style="max-width:260px;">
                                     @(string.IsNullOrWhiteSpace(h.Remarks) ? "—" : h.Remarks)
                                 </td>
@@ -331,6 +352,10 @@ else if (!string.IsNullOrWhiteSpace(Model.JobTicket.Remarks))
                             <div class="col-sm-6">
                                 <div class="text-muted small">Status</div>
                                 <span class="badge rounded-pill @historyBadgeClass(h.Status) px-3 py-2">@h.Status</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="text-muted small">Actor</div>
+                                <div>@actorLabel(h)</div>
                             </div>
                             <div class="col-sm-6">
                                 <div class="text-muted small">Date Changed</div>

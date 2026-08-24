@@ -49,6 +49,45 @@
                 : 'bg-secondary-subtle text-secondary-emphasis');
         }
 
+        // ---- Performance snapshot tiles ----
+        set('evalStatCompleted', d.completed || '0');
+        set('evalStatOnTime', (d.ontime || '0') + '%');
+
+        const tile3Icon = document.getElementById('evalStatTile3Icon');
+        const tile3Label = document.getElementById('evalStatTile3Label');
+        const tile3Value = document.getElementById('evalStatTile3Value');
+        const tile4Icon = document.getElementById('evalStatTile4Icon');
+        const tile4Label = document.getElementById('evalStatTile4Label');
+        const tile4Value = document.getElementById('evalStatTile4Value');
+
+        // Tile 3/4 show different metrics depending on role, same as the New
+        // Evaluation page: job ticket Rescheduled/Cancelled counts for a Field
+        // Technician (Office Tasks never use those statuses), Rejected
+        // activities/Overdue tasks for an Office Staff.
+        if (tile3Icon && tile3Label && tile3Value && tile4Icon && tile4Label && tile4Value) {
+            if (d.roleType === 'OfficeStaff') {
+                tile3Icon.className = 'stat-icon bg-danger-subtle text-danger';
+                tile3Icon.innerHTML = '<i class="bi bi-hand-thumbs-down"></i>';
+                tile3Label.textContent = 'Rejected Activities';
+                tile3Value.textContent = d.rejected || '0';
+
+                tile4Icon.className = 'stat-icon bg-warning-subtle text-warning';
+                tile4Icon.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+                tile4Label.textContent = 'Overdue Task';
+                tile4Value.textContent = d.overdue || '0';
+            } else {
+                tile3Icon.className = 'stat-icon bg-warning-subtle text-warning';
+                tile3Icon.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+                tile3Label.textContent = 'Rescheduled';
+                tile3Value.textContent = d.rescheduled || '0';
+
+                tile4Icon.className = 'stat-icon bg-danger-subtle text-danger';
+                tile4Icon.innerHTML = '<i class="bi bi-x-circle"></i>';
+                tile4Label.textContent = 'Cancelled';
+                tile4Value.textContent = d.cancelled || '0';
+            }
+        }
+
         // ---- Criteria ratings ----
         const results = parseJson(d.results);
         const body = document.getElementById('evalResultsBody');

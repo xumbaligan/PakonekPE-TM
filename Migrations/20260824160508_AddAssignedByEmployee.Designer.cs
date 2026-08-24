@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TM_PE.Data;
 
@@ -11,9 +12,11 @@ using TM_PE.Data;
 namespace TM_PE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824160508_AddAssignedByEmployee")]
+    partial class AddAssignedByEmployee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,18 +36,11 @@ namespace TM_PE.Migrations
                     b.Property<int>("ActivityID")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("DateReviewed")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("DateSubmitted")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("EmployeeID")
                         .HasColumnType("int");
-
-                    b.Property<string>("Feedback")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("FileName")
                         .IsRequired()
@@ -53,9 +49,6 @@ namespace TM_PE.Migrations
                     b.Property<string>("FilePath")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ReviewedByEmployeeID")
-                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -66,8 +59,6 @@ namespace TM_PE.Migrations
                     b.HasIndex("ActivityID");
 
                     b.HasIndex("EmployeeID");
-
-                    b.HasIndex("ReviewedByEmployeeID");
 
                     b.ToTable("tbl_activitysubmission");
                 });
@@ -480,9 +471,6 @@ namespace TM_PE.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketSubmissionHistoryID"));
 
-                    b.Property<int?>("ActorEmployeeID")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("DateChanged")
                         .HasColumnType("datetime2");
 
@@ -499,8 +487,6 @@ namespace TM_PE.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("JobTicketSubmissionHistoryID");
-
-                    b.HasIndex("ActorEmployeeID");
 
                     b.HasIndex("JobTicketID");
 
@@ -735,16 +721,9 @@ namespace TM_PE.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TM_PE.Model.Employee", "ReviewedByEmployee")
-                        .WithMany()
-                        .HasForeignKey("ReviewedByEmployeeID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Activity");
 
                     b.Navigation("Employee");
-
-                    b.Navigation("ReviewedByEmployee");
                 });
 
             modelBuilder.Entity("TM_PE.Model.Employee", b =>
@@ -870,18 +849,11 @@ namespace TM_PE.Migrations
 
             modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
                 {
-                    b.HasOne("TM_PE.Model.Employee", "ActorEmployee")
-                        .WithMany()
-                        .HasForeignKey("ActorEmployeeID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
                         .WithMany("SubmissionHistory")
                         .HasForeignKey("JobTicketID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ActorEmployee");
 
                     b.Navigation("JobTicket");
                 });

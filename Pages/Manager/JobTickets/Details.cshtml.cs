@@ -39,6 +39,8 @@ namespace TM_PE.Pages.Manager.JobTickets
                 .Include(t => t.Assignments).ThenInclude(a => a.Employee)
                 .Include(t => t.RescheduleHistory).ThenInclude(h => h.ArchivedSubmissions)
                 .Include(t => t.SubmissionHistory).ThenInclude(h => h.ArchivedSubmissions)
+                .Include(t => t.SubmissionHistory).ThenInclude(h => h.ActorEmployee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(t => t.JobTicketID == id);
 
             if (ticket == null)

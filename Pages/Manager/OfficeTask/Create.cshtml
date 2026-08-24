@@ -47,6 +47,16 @@
                           class="text-danger"></span>
                 </div>
 
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">
+                        Assigned By
+                    </label>
+
+                    <input class="form-control"
+                           value="@Model.CurrentManagerName"
+                           disabled />
+                </div>
+
             </div>
 
             <!-- Task Name -->
@@ -256,6 +266,9 @@
                 selectedEmployeesDiv.appendChild(badge);
                 selectedEmployeesDiv.appendChild(hiddenInput);
 
+                // Once assigned, an employee can't be picked again from the
+                // dropdown until they're removed from the selected list below.
+                employeeSelect.options[employeeSelect.selectedIndex].hidden = true;
                 employeeSelect.value = '';
                 refreshMultiAssigneeHint();
             });
@@ -265,6 +278,9 @@
                 selectedEmployeesDiv
                     .querySelectorAll(`[data-employee-id="${id}"]`)
                     .forEach(el => el.remove());
+
+                const opt = employeeSelect.querySelector(`option[value="${id}"]`);
+                if (opt) opt.hidden = false;
 
                 if (addedEmployees.size === 0) {
                     noEmployeesMsg.style.display = '';

@@ -69,6 +69,10 @@
                     <div class="text-muted small">Due Date</div>
                     <div>@Model.OfficeTask.DueDate.ToString("M/d/yyyy")</div>
                 </div>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Assigned By</div>
+                    <div>@(Model.OfficeTask.AssignedByEmployee?.FullName ?? "—")</div>
+                </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Model.OfficeTask.Description))
@@ -120,6 +124,7 @@
                                 <th style="width:160px;">Submission</th>
                                 <th style="width:200px;">Action</th>
                                 <th style="width:220px;">Feedback</th>
+                                <th style="width:110px;">History</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,6 +143,7 @@
                                         _ => "text-secondary"
                                     };
                                     Model.LatestSubmissions.TryGetValue(activity.ActivityID, out var submission);
+                                    var history = Model.SubmissionHistory.GetValueOrDefault(activity.ActivityID) ?? new List<TM_PE.Model.ActivitySubmission>();
                                     var isLocked = activity.Status == "Approved";
 
                                     <tr data-activity-row data-has-submission="@(submission != null ? "true" : "false")"
@@ -160,7 +166,7 @@
                                                 @(activity.Status == "Submitted" ? "Submitted" : activity.Status)
                                             </div>
                                             <div class="text-muted small activity-rejection-count" style="@(activity.Status == "Rejected" && activity.RejectionCount > 0 ? "" : "display:none;")">
-                                                Rejected @(activity.RejectionCount == 1 ? "1 time" : $"{activity.RejectionCount} times")
+                                                Rejected @(activity.RejectionCount == 1 ? "1 attempt" : $"{activity.RejectionCount} attempts")
                                             </div>
                                         </td>
                                         <td>
@@ -214,13 +220,25 @@
                                                    class="form-control form-control-sm activity-feedback-input" placeholder="Add feedback..." maxlength="500"
                                                    readonly="@(isLocked ? "readonly" : null)" />
                                         </td>
+                                    <td>
+                                        @if (history.Any())
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#historyModal-@activity.ActivityID">
+                                                <i class="bi bi-clock-history"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
                                     </tr>
                                 }
                             }
                             else
                             {
                                 <tr>
-                                    <td colspan="5" class="text-muted text-center py-3">No activities yet.</td>
+                                    <td colspan="6" class="text-muted text-center py-3">No activities yet.</td>
                                 </tr>
                             }
                         </tbody>
@@ -234,6 +252,20 @@
             </div>
         </div>
     </div>
+
+    @* ===================== HISTORY OF SUBMISSION MODALS ===================== *@
+    @* One per activity, placed outside the form/table to keep markup valid. *@
+    @if (Model.OfficeTask.Activities != null)
+    {
+        @foreach (var activity in Model.OfficeTask.Activities)
+        {
+            var activityHistory = Model.SubmissionHistory.GetValueOrDefault(activity.ActivityID) ?? new List<TM_PE.Model.ActivitySubmission>();
+            if (activityHistory.Any())
+            {
+                <partial name="_ActivitySubmissionHistoryModal" model="new TM_PE.Pages.Shared.ActivitySubmissionHistoryViewModel { Activity = activity, Attempts = activityHistory }" />
+            }
+        }
+    }
 
     @* ===================== SAVE / CANCEL ===================== *@
     <div class="d-flex justify-content-end gap-2 mb-4">

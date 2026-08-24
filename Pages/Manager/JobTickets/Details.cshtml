@@ -52,6 +52,10 @@
                 <div class="text-muted small">Due Date</div>
                 <div>@(Model.JobTicket.DateOfCompletion?.ToString("M/d/yyyy") ?? "—")</div>
             </div>
+            <div class="col-sm-3">
+                <div class="text-muted small">Assigned By</div>
+                <div>@(Model.JobTicket.AssignedByEmployee?.FullName ?? "—")</div>
+            </div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -158,7 +162,7 @@
     </div>
 }
 
-<!-- History of Submission -->
+<!-- Ticket History -->
 @{
     Func<string, string> historyBadgeClass = s => s switch
     {
@@ -169,16 +173,30 @@
         "Rescheduled" => "bg-primary-subtle text-primary",
         _ => "bg-secondary-subtle text-secondary"
     };
+
+    // A "Rescheduled" entry is always logged by the manager themselves (see
+    // EditModel.OnPostAsync); every other status update here is always
+    // logged by this ticket's field technician leader (see FieldTechnician
+    // DetailsModel.OnPostSaveAsync) - either way, name the actor's role
+    // explicitly rather than just their name.
+    Func<TM_PE.Model.JobTicketSubmissionHistory, string> actorLabel = h =>
+    {
+        if (h.ActorEmployee == null) return "—";
+        var roleLabel = h.ActorEmployee.RoleType == TM_PE.Model.RoleType.Manager
+            ? "Manager"
+            : "Field Technician Leader";
+        return $"{roleLabel} {h.ActorEmployee.FullName}";
+    };
 }
 @if (Model.JobTicket.SubmissionHistory != null && Model.JobTicket.SubmissionHistory.Any())
 {
     <div class="card shadow-sm border-0 mb-3">
         <div class="card-body p-4">
-            <h5 class="fw-semibold mb-1">🕒 History of Submission</h5>
+            <h5 class="fw-semibold mb-1">🕒 Ticket History</h5>
             <p class="text-muted small mb-3">
-                Every status update the field technician leader has saved for this job order, in
-                order. Click <strong>View</strong> on any row to see the full details for that
-                update, including whatever photos or files were attached at the time.
+                Every status update logged for this job order - by the field technician leader or
+                by you - in order. Click <strong>View</strong> on any row to see the full details
+                for that update, including whatever photos or files were attached at the time.
             </p>
 
             <div class="table-responsive">
@@ -186,6 +204,7 @@
                     <thead>
                         <tr>
                             <th>Status</th>
+                            <th>Actor</th>
                             <th>Remarks</th>
                             <th>Date Changed</th>
                             <th class="text-end">Action</th>
@@ -198,6 +217,7 @@
                                 <td>
                                     <span class="badge rounded-pill @historyBadgeClass(h.Status) px-3 py-1">@h.Status</span>
                                 </td>
+                                <td class="small text-nowrap">@actorLabel(h)</td>
                                 <td class="text-truncate" style="max-width:260px;">
                                     @(string.IsNullOrWhiteSpace(h.Remarks) ? "—" : h.Remarks)
                                 </td>
@@ -225,6 +245,7 @@
                     <div class="modal-header">
                         <h6 class="modal-title fw-bold mb-0" id="submissionHistoryModalLabel-@h.JobTicketSubmissionHistoryID">
                             <span class="badge rounded-pill @historyBadgeClass(h.Status) px-3 py-2">@h.Status</span>
+                            <span class="text-muted small ms-2">@actorLabel(h)</span>
                             <span class="text-muted small ms-2">@h.DateChanged.ToString("M/d/yyyy h:mm tt")</span>
                         </h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

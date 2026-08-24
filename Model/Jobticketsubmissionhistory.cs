@@ -32,6 +32,16 @@ namespace TM_PE.Model
 
         public DateTime DateChanged { get; set; } = DateTime.Now;
 
+        // Who made this change - the field technician leader for every status
+        // (see FieldTechnician DetailsModel.OnPostSaveAsync), or the manager
+        // for the "Rescheduled" entry logged when they change the service
+        // date (see Manager JobTickets EditModel.OnPostAsync). Null only for
+        // entries that predate this field.
+        public int? ActorEmployeeID { get; set; }
+
+        [ForeignKey(nameof(ActorEmployeeID))]
+        public Employee? ActorEmployee { get; set; }
+
         // Photos/files that were on the ticket at the time of this save;
         // archived here so the "current" submissions list starts fresh for the
         // leader's next update, while still being viewable from this history

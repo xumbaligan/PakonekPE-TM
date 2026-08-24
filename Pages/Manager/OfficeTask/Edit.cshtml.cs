@@ -48,6 +48,7 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.Employee)
                 .Include(t => t.Activities).ThenInclude(a => a.AssignedEmployee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(m => m.OfficeTaskID == id);
 
             if (officeTask == null)
@@ -98,6 +99,7 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 var reload = await _context.OfficeTasks
                     .Include(t => t.Assignments).ThenInclude(a => a.Employee)
                     .Include(t => t.Activities).ThenInclude(a => a.AssignedEmployee)
+                    .Include(t => t.AssignedByEmployee)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(t => t.OfficeTaskID == OfficeTask.OfficeTaskID);
 
@@ -105,6 +107,7 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 {
                     OfficeTask.Assignments = reload.Assignments;
                     OfficeTask.Activities = reload.Activities;
+                    OfficeTask.AssignedByEmployee = reload.AssignedByEmployee;
                 }
 
                 return Page();

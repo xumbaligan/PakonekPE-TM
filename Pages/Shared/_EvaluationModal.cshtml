@@ -49,6 +49,46 @@
                     </div>
                 </div>
 
+                <h6 class="text-muted text-uppercase small fw-bold mb-2">Performance Snapshot</h6>
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-tile d-flex align-items-center gap-3">
+                            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-check2-circle"></i></div>
+                            <div>
+                                <div class="stat-label">Completed Job/Task</div>
+                                <div class="stat-value" id="evalStatCompleted">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-tile d-flex align-items-center gap-3">
+                            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-clock-history"></i></div>
+                            <div>
+                                <div class="stat-label">On-time Rate</div>
+                                <div class="stat-value" id="evalStatOnTime">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-tile d-flex align-items-center gap-3">
+                            <div class="stat-icon bg-warning-subtle text-warning" id="evalStatTile3Icon"><i class="bi bi-arrow-repeat"></i></div>
+                            <div>
+                                <div class="stat-label" id="evalStatTile3Label">Rescheduled</div>
+                                <div class="stat-value" id="evalStatTile3Value">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="stat-tile d-flex align-items-center gap-3">
+                            <div class="stat-icon bg-danger-subtle text-danger" id="evalStatTile4Icon"><i class="bi bi-x-circle"></i></div>
+                            <div>
+                                <div class="stat-label" id="evalStatTile4Label">Cancelled</div>
+                                <div class="stat-value" id="evalStatTile4Value">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <h6 class="text-muted text-uppercase small fw-bold mb-2">Criteria Ratings</h6>
                 <div class="table-responsive mb-4">
                     <table class="table table-sm align-middle">

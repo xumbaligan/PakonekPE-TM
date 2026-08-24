@@ -79,13 +79,34 @@ namespace TM_PE.Pages.Manager.PerformanceReport
         public decimal AverageStars => EvaluationScoring.StarsFor(AverageScore);
 
         // ---- Chart data ----
-        // Bar chart: average score per employee (only those with evaluations,
-        // highest first, so the chart stays readable).
-        public List<ChartPoint> ScoreByEmployee => Rows
+        // Bar chart: average score per employee - every employee in the
+        // filtered list, not just the evaluated ones. Silently dropping
+        // unevaluated staff made the chart understate headcount (4 bars for
+        // a 10-person team reads as "4 employees"), and the gap itself is
+        // useful information, not noise. Evaluated employees come first,
+        // highest score first, so the ranking stays readable; unevaluated
+        // ones follow, alphabetically, as empty gray bars.
+        public List<EmployeeScorePoint> ScoreByEmployee => Rows
             .Where(r => r.Appraisals > 0)
             .OrderByDescending(r => r.AverageScore)
-            .Select(r => new ChartPoint { Label = r.EmployeeName, Value = r.AverageScore })
+            .Select(r => new EmployeeScorePoint { Label = r.EmployeeName, Value = r.AverageScore, Rating = r.Rating })
+            .Concat(Rows
+                .Where(r => r.Appraisals == 0)
+                .OrderBy(r => r.EmployeeName)
+                .Select(r => new EmployeeScorePoint { Label = r.EmployeeName, Value = null, Rating = r.Rating }))
             .ToList();
+
+        public class EmployeeScorePoint
+        {
+            public string Label { get; set; } = string.Empty;
+
+            // Null for an employee with no evaluation in the selected filters.
+            public decimal? Value { get; set; }
+
+            // "Not yet evaluated" when Value is null, otherwise one of
+            // EvaluationScoring's rating bands - drives the bar's color.
+            public string Rating { get; set; } = string.Empty;
+        }
 
         // Pie chart: how many employees fall into each rating band.
         public List<ChartPoint> RatingDistribution
@@ -210,7 +231,11 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                 .OrderBy(d => d.DepartmentName)
                 .ToListAsync();
 
+            // Only Finalized evaluations count anywhere on this report - a
+            // Draft is still a manager's work in progress and hasn't been
+            // communicated to the employee yet.
             var distinctPeriods = await _context.PerformanceEvaluations
+                .Where(e => e.EvaluationStatus == EvaluationStatus.Finalized)
                 .Select(e => new { e.EvaluationPeriodYear, e.EvaluationPeriodMonth })
                 .Distinct()
                 .ToListAsync();
@@ -243,7 +268,7 @@ namespace TM_PE.Pages.Manager.PerformanceReport
             // Evaluations for the selected period. An empty period means the
             // report covers every period on record.
             var evaluationQuery = _context.PerformanceEvaluations
-                .Where(e => employeeIds.Contains(e.EmployeeID));
+                .Where(e => employeeIds.Contains(e.EmployeeID) && e.EvaluationStatus == EvaluationStatus.Finalized);
 
             if (!string.IsNullOrWhiteSpace(Period))
             {

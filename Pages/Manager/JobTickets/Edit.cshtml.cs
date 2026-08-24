@@ -46,6 +46,7 @@ namespace TM_PE.Pages.Manager.JobTickets
             var jobTicket = await _context.JobTickets
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.Employee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(m => m.JobTicketID == id);
 
             if (jobTicket == null)
@@ -212,6 +213,7 @@ namespace TM_PE.Pages.Manager.JobTickets
             {
                 var reload = await _context.JobTickets
                     .Include(t => t.Assignments).ThenInclude(a => a.Employee)
+                    .Include(t => t.AssignedByEmployee)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(t => t.JobTicketID == JobTicket.JobTicketID);
 
@@ -221,6 +223,7 @@ namespace TM_PE.Pages.Manager.JobTickets
                     JobTicket.TicketNumber = reload.TicketNumber;
                     JobTicket.DateCreated = reload.DateCreated;
                     JobTicket.Status = reload.Status;
+                    JobTicket.AssignedByEmployee = reload.AssignedByEmployee;
                     OriginalServiceDate = reload.ServiceDate;
                 }
 
@@ -270,7 +273,8 @@ namespace TM_PE.Pages.Manager.JobTickets
                     // below, which is both accurate and within the limit.
                     Status = JobTicketStatuses.Rescheduled,
                     Remarks = null,
-                    DateChanged = DateTime.Now
+                    DateChanged = DateTime.Now,
+                    ActorEmployeeID = HttpContext.Session.GetInt32("AuthEmployeeId")
                 };
 
                 foreach (var sub in currentSubmissions)

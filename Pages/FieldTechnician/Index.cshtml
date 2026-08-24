@@ -29,6 +29,7 @@
                         <th>Client</th>
                         <th>Date</th>
                         <th>Status</th>
+                        <th>Assigned By</th>
                         <th>Your Role</th>
                         <th class="text-end pe-3">Action</th>
                     </tr>
@@ -56,6 +57,7 @@
                             <td>@(ticket.JobType == TM_PE.Model.JobTypes.Maintenance ? "—" : ticket.ClientFullName)</td>
                             <td>@ticket.ServiceDate.ToString("M/d/yyyy")</td>
                             <td><span class="badge rounded-pill @badgeClass px-3 py-2">@ticket.DisplayStatus</span></td>
+                            <td class="text-muted">@(ticket.AssignedByEmployee?.FullName ?? "—")</td>
                             <td>
                                 @if (isLeader)
                                 {

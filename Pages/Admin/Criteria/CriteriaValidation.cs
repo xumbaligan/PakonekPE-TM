@@ -21,6 +21,26 @@ public static class CriteriaValidation
     public static async Task<string?> ValidateAsync(
         AppDbContext db, CriteriaModel item, int? excludingId)
     {
+        var name = (item.CriteriaName ?? string.Empty).Trim();
+
+        // Names double as how managers tell criteria apart, so no two
+        // criteria - active or not - may share one.
+        var duplicateName = await db.Criteria
+            .Where(c => c.CriteriaName.ToLower() == name.ToLower()
+                && (excludingId == null || c.CriteriaId != excludingId.Value))
+            .AnyAsync();
+        if (duplicateName)
+        {
+            return $"A criterion named \"{name}\" already exists. Please choose a different name.";
+        }
+
+        // A criterion with no weight would never count toward anyone's
+        // Overall Score, so it can't be saved.
+        if (item.Weight <= 0)
+        {
+            return "Please set a weight greater than 0 - a criterion can't be saved without one.";
+        }
+
         if (!item.IsActive
             || (item.RoleType != RoleType.FieldTechnician && item.RoleType != RoleType.OfficeStaff))
         {

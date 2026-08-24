@@ -49,8 +49,10 @@ namespace TM_PE.Pages.Manager.AppraisalRecords
 
             // Overall Rating is the total of all of this employee's evaluation
             // scores averaged out, so one strong month doesn't hide a weak one.
+            // Only Finalized evaluations count - a Draft is still a manager's
+            // work in progress and hasn't been communicated to the employee yet.
             var summaries = await _context.PerformanceEvaluations
-                .Where(e => employeeIds.Contains(e.EmployeeID))
+                .Where(e => employeeIds.Contains(e.EmployeeID) && e.EvaluationStatus == EvaluationStatus.Finalized)
                 .GroupBy(e => e.EmployeeID)
                 .Select(g => new
                 {

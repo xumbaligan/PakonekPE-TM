@@ -35,6 +35,14 @@
                 </div>
             </div>
 
+            <!-- Assigned By -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Assigned By</label>
+                    <input class="form-control" value="@(Model.JobTicket.AssignedByEmployee?.FullName ?? "—")" disabled />
+                </div>
+            </div>
+
             <!-- Job Type -->
             <div class="mb-3">
                 <label class="form-label fw-semibold">Job Type <span class="text-danger">*</span></label>
@@ -322,11 +330,20 @@
 
             // ---------------- DATE OF COMPLETION ----------------
             const dateOfCompletionInput = document.getElementById('dateOfCompletionInput');
+            function addDaysToDateString(dateStr, days) {
+                const d = new Date(dateStr + 'T00:00:00');
+                d.setDate(d.getDate() + days);
+                return d.toISOString().slice(0, 10);
+            }
             function applyDateOfCompletionMin() {
                 if (!serviceDateInput.value) return;
                 dateOfCompletionInput.min = serviceDateInput.value;
+                // Bump the deadline two days past the new service date rather
+                // than same-day, matching the Create page's default - a
+                // reschedule shouldn't leave the job due (or already overdue)
+                // the moment the new service date arrives.
                 if (dateOfCompletionInput.value && dateOfCompletionInput.value < serviceDateInput.value) {
-                    dateOfCompletionInput.value = serviceDateInput.value;
+                    dateOfCompletionInput.value = addDaysToDateString(serviceDateInput.value, 2);
                 }
             }
             serviceDateInput.addEventListener('change', applyDateOfCompletionMin);

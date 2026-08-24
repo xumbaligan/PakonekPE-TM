@@ -95,15 +95,53 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="stat-tile d-flex align-items-center gap-3">
-            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
-            <div>
-                <div class="stat-label">Rescheduled / Cancelled</div>
-                <div class="stat-value">@Model.Stats.Rescheduled / @Model.Stats.Cancelled</div>
+    @* Tiles 3/4 show different metrics depending on role, same as the New
+       Evaluation page: job ticket Rescheduled/Cancelled counts for a Field
+       Technician, since Office Staff office tasks never use those statuses;
+       Rejected activities/Overdue tasks for an Office Staff, since those are
+       the equivalents that actually apply there. *@
+    @if (emp.RoleType == TM_PE.Model.RoleType.OfficeStaff)
+    {
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-hand-thumbs-down"></i></div>
+                <div>
+                    <div class="stat-label">Rejected Activities</div>
+                    <div class="stat-value">@Model.Stats.RejectedActivities</div>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-exclamation-triangle"></i></div>
+                <div>
+                    <div class="stat-label">Overdue Task</div>
+                    <div class="stat-value">@Model.Stats.OverdueTasks</div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+                <div>
+                    <div class="stat-label">Rescheduled</div>
+                    <div class="stat-value">@Model.Stats.Rescheduled</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="stat-tile d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+                <div>
+                    <div class="stat-label">Cancelled</div>
+                    <div class="stat-value">@Model.Stats.Cancelled</div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @* ===================== Last evaluation ===================== *@
@@ -145,6 +183,14 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h5 class="mb-0"><i class="bi bi-list-columns-reverse"></i> Evaluation History</h5>
         <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small mb-0" for="periodFilter">Evaluation Period</label>
+            <select class="form-select form-select-sm" id="periodFilter" style="width:auto">
+                <option value="">All periods</option>
+                @foreach (var p in Model.Periods)
+                {
+                    <option value="@p">@p</option>
+                }
+            </select>
             <label class="text-muted small mb-0" for="yearFilter">Year</label>
             <select class="form-select form-select-sm" id="yearFilter" style="width:auto">
                 <option value="">All years</option>
@@ -179,8 +225,9 @@
                     {
                         var results = TM_PE.Pages.Manager.PerformanceEvaluation.IndexModel.BuildResultViews(e);
                         var rowClass = TM_PE.Model.EvaluationScoring.RatingBadgeClass(e.OverallRating);
+                        var evalStats = Model.EvaluationStats.GetValueOrDefault(e.EvaluationID) ?? new TM_PE.Model.EmployeePerformanceStats();
 
-                        <tr data-year="@e.EvaluationDate.Year">
+                        <tr data-year="@e.EvaluationDate.Year" data-period="@e.EvaluationPeriod">
                             <td>
                                 <div class="fw-semibold">@e.EvaluationPeriod</div>
                                 <div class="text-muted small">@e.EvaluationDate.ToString("MMMM d, yyyy")</div>
@@ -208,6 +255,7 @@
                                         data-bs-toggle="modal" data-bs-target="#evaluationModal"
                                         data-employee="@emp.FullName"
                                         data-role="@emp.RoleType"
+                                        data-role-type="@emp.RoleType"
                                         data-period="@e.EvaluationPeriod"
                                         data-evaluator="@e.EvaluatorName"
                                         data-date="@e.EvaluationDate.ToString("MMMM d, yyyy")"
@@ -216,6 +264,12 @@
                                         data-status="@e.EvaluationStatus"
                                         data-feedback="@e.GeneralFeedback"
                                         data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
+                                        data-completed="@evalStats.CompletedJobsTasks"
+                                        data-ontime="@evalStats.OnTimeRate.ToString("0")"
+                                        data-rescheduled="@evalStats.Rescheduled"
+                                        data-cancelled="@evalStats.Cancelled"
+                                        data-rejected="@evalStats.RejectedActivities"
+                                        data-overdue="@evalStats.OverdueTasks"
                                         title="View full evaluation">
                                     <i class="bi bi-eye"></i>
                                 </button>
@@ -223,7 +277,7 @@
                         </tr>
                     }
                     <tr id="noYearMatch" class="d-none">
-                        <td colspan="6" class="text-center text-muted py-4">No evaluations for the selected year.</td>
+                        <td colspan="6" class="text-center text-muted py-4">No evaluations for the selected filters.</td>
                     </tr>
                 }
             </tbody>
@@ -268,26 +322,31 @@
 <partial name="_EvaluationModal" />
 
 @section Scripts {
-    <script src="~/js/star-rating.js"></script>
-    <script src="~/js/evaluation-modal.js"></script>
+    <script src="~/js/star-rating.js" asp-append-version="true"></script>
+    <script src="~/js/evaluation-modal.js" asp-append-version="true"></script>
     <script>
         (function () {
             const yearFilter = document.getElementById('yearFilter');
+            const periodFilter = document.getElementById('periodFilter');
             const noMatch = document.getElementById('noYearMatch');
-            if (!yearFilter) return;
+            if (!yearFilter || !periodFilter) return;
 
-            yearFilter.addEventListener('change', function () {
+            function applyFilters() {
                 const year = yearFilter.value;
+                const period = periodFilter.value;
                 let visible = 0;
 
                 document.querySelectorAll('#historyBody tr[data-year]').forEach(row => {
-                    const show = !year || row.dataset.year === year;
+                    const show = (!year || row.dataset.year === year) && (!period || row.dataset.period === period);
                     row.classList.toggle('d-none', !show);
                     if (show) visible++;
                 });
 
                 if (noMatch) noMatch.classList.toggle('d-none', visible > 0);
-            });
+            }
+
+            yearFilter.addEventListener('change', applyFilters);
+            periodFilter.addEventListener('change', applyFilters);
         })();
     </script>
 }

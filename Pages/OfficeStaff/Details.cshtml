@@ -71,6 +71,10 @@
                         <div>@Model.OfficeTask.DateCompleted.Value.ToString("M/d/yyyy")</div>
                     </div>
                 }
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small">Assigned By</div>
+                    <div>@(Model.OfficeTask.AssignedByEmployee?.FullName ?? "—")</div>
+                </div>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Model.OfficeTask.Description))
@@ -137,6 +141,7 @@
                             <th>Activity</th>
                             <th style="width:130px;">Status</th>
                             <th style="width:200px;">Submission</th>
+                            <th style="width:110px;">History</th>
                             <th style="width:220px;">Feedback</th>
                         </tr>
                     </thead>
@@ -153,25 +158,49 @@
                                     _ => "bg-secondary-subtle text-secondary"
                                 };
                                 Model.LatestSubmissions.TryGetValue(activity.ActivityID, out var submission);
+                                var history = Model.SubmissionHistory.GetValueOrDefault(activity.ActivityID) ?? new List<TM_PE.Model.ActivitySubmission>();
 
                                 var isMine = activity.AssignedEmployeeID == Model.CurrentEmployee.EmployeeId;
                                 var isClaimedByOther = !soleAssignee && activity.AssignedEmployeeID.HasValue && !isMine;
                                 var canUpload = activity.Status != "Approved" && (soleAssignee || activity.AssignedEmployeeID == null || isMine);
+                                // Only the not-yet-reviewed file can be pulled back - once a manager
+                                // has approved or rejected it, that decision (and any feedback) is
+                                // permanent history and must not be removable.
+                                var canRemove = canUpload && submission != null && submission.Status == "Pending Review";
 
                                 <tr>
                                     <td class="fw-semibold">@activity.ActivityName</td>
                                     <td>
                                         <span class="badge @statusBadgeClass">@activity.Status</span>
+                                        @if (activity.Status == "Rejected" && activity.RejectionCount > 0)
+                                        {
+                                            <div class="text-muted small">
+                                                Rejected @(activity.RejectionCount == 1 ? "1 attempt" : $"{activity.RejectionCount} attempts")
+                                            </div>
+                                        }
                                     </td>
 
                                     <td>
                                         <div class="d-flex align-items-center gap-2">
                                             @if (submission != null)
                                             {
-                                                <a asp-page-handler="Download" asp-route-submissionId="@submission.SubmissionID"
-                                                   class="small text-truncate" style="max-width:110px;" title="@submission.FileName">
-                                                    @submission.FileName
-                                                </a>
+                                                <div class="border rounded-2 px-2 py-1 d-flex align-items-center gap-1 bg-light">
+                                                    <a asp-page-handler="Download" asp-route-submissionId="@submission.SubmissionID"
+                                                       class="small text-truncate" style="max-width:100px;" title="@submission.FileName">
+                                                        @submission.FileName
+                                                    </a>
+                                                    @if (canRemove)
+                                                    {
+                                                        <form method="post" asp-page-handler="RemoveSubmission" class="m-0 p-0 lh-1"
+                                                              onsubmit="return confirm('Remove this uploaded file? You will need to upload again.');">
+                                                            <input type="hidden" name="submissionId" value="@submission.SubmissionID" />
+                                                            <input type="hidden" name="officeTaskId" value="@Model.OfficeTask.OfficeTaskID" />
+                                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Remove file">
+                                                                <i class="bi bi-x-lg"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </div>
                                             }
                                             else
                                             {
@@ -197,6 +226,19 @@
                                         </div>
                                     </td>
 
+                                    <td>
+                                        @if (history.Any())
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#historyModal-@activity.ActivityID">
+                                                <i class="bi bi-clock-history"></i> History
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+
                                     <td class="text-muted small">
                                         @(string.IsNullOrWhiteSpace(activity.FeedBack) ? "—" : activity.FeedBack)
                                     </td>
@@ -219,6 +261,20 @@
             </div>
         </div>
     </div>
+
+    @* ===================== HISTORY OF SUBMISSION MODALS ===================== *@
+    @* One per activity, placed outside the table to keep markup valid. *@
+    @if (Model.OfficeTask.Activities != null)
+    {
+        @foreach (var activity in Model.OfficeTask.Activities)
+        {
+            var history = Model.SubmissionHistory.GetValueOrDefault(activity.ActivityID) ?? new List<TM_PE.Model.ActivitySubmission>();
+            if (history.Any())
+            {
+                <partial name="_ActivitySubmissionHistoryModal" model="new TM_PE.Pages.Shared.ActivitySubmissionHistoryViewModel { Activity = activity, Attempts = history }" />
+            }
+        }
+    }
 
     <div class="d-flex justify-content-end mb-4">
         <a asp-page="./Index" class="btn btn-outline-secondary">Back to My Tasks</a>

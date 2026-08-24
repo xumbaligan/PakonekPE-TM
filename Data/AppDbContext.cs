@@ -142,6 +142,41 @@ namespace TM_PE.Data
                 .WithMany(h => h.ArchivedSubmissions)
                 .HasForeignKey(s => s.SubmissionHistoryID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // "Assigned By" is a record of who created the ticket/task - removing
+            // that manager later must never cascade-delete the tickets/tasks they
+            // created.
+            b.Entity<JobTicket>()
+                .HasOne(t => t.AssignedByEmployee)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedByEmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.Entity<OfficeTask>()
+                .HasOne(t => t.AssignedByEmployee)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedByEmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // An attempt's optional "reviewed by" link must NOT cascade-delete -
+            // it already cascades via ActivityID (through TaskActivity) and via
+            // EmployeeID (the submitter), so a second cascade path through the
+            // reviewer would hit SQL Server's multiple-cascade-paths restriction.
+            b.Entity<ActivitySubmission>()
+                .HasOne(s => s.ReviewedByEmployee)
+                .WithMany()
+                .HasForeignKey(s => s.ReviewedByEmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // A history entry's optional "actor" link must NOT cascade-delete -
+            // it already cascades via JobTicketID, so a second cascade path
+            // through the actor would hit SQL Server's multiple-cascade-paths
+            // restriction.
+            b.Entity<JobTicketSubmissionHistory>()
+                .HasOne(h => h.ActorEmployee)
+                .WithMany()
+                .HasForeignKey(h => h.ActorEmployeeID)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

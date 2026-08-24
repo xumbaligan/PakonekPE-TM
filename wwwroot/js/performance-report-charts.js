@@ -48,6 +48,17 @@
 
     const emptyMsg = 'No evaluations match the current filters, so there is nothing to chart yet.';
 
+    // Same colours the rating badges (and the pie chart below) use, so every
+    // view of a rating reads as the same thing.
+    const ratingColors = {
+        'Excellent': '#198754',
+        'Very Good': '#0d6efd',
+        'Good': '#0dcaf0',
+        'Needs Improvement': '#ffc107',
+        'Poor': '#dc3545'
+    };
+    const unevaluatedColor = '#adb5bd';
+
     // ---- Bar chart: average score per employee ----
     if (scoreData.length === 0) {
         showMessage('scoreByEmployeeMessage', emptyMsg);
@@ -65,10 +76,20 @@
         const totalSlots = Math.max(scoreData.length, Math.floor(availableWidth / perBar));
 
         const labels = scoreData.map(d => d.Label);
-        const values = scoreData.map(d => Number(d.Value));
+        // An unevaluated employee still gets a real (zero-height) bar and a
+        // tooltip - null is reserved for the unlabeled padding slots below,
+        // which must stay invisible and untouchable.
+        const values = scoreData.map(d => d.Value === null || d.Value === undefined ? 0 : Number(d.Value));
+        const ratings = scoreData.map(d => d.Rating || 'Not yet evaluated');
+        const colors = scoreData.map(d => (d.Value === null || d.Value === undefined)
+            ? unevaluatedColor
+            : (ratingColors[d.Rating] || unevaluatedColor));
+
         for (let i = scoreData.length; i < totalSlots; i++) {
             labels.push('');
             values.push(null);
+            ratings.push('');
+            colors.push('transparent');
         }
 
         new Chart(canvas, {
@@ -78,7 +99,7 @@
                 datasets: [{
                     label: 'Average Score',
                     data: values,
-                    backgroundColor: '#0d6efd',
+                    backgroundColor: colors,
                     borderRadius: 6,
                     maxBarThickness: 48
                 }]
@@ -86,7 +107,20 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const rating = ratings[ctx.dataIndex];
+                                if (!rating) return '';
+                                return rating === 'Not yet evaluated'
+                                    ? 'Not yet evaluated'
+                                    : ctx.parsed.y + ' / 100 (' + rating + ')';
+                            }
+                        }
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -105,16 +139,6 @@
     if (ratingData.length === 0) {
         showMessage('ratingDistributionMessage', emptyMsg);
     } else {
-        // Same colours the rating badges use, so the chart and the table read
-        // as one report.
-        const ratingColors = {
-            'Excellent': '#198754',
-            'Very Good': '#0d6efd',
-            'Good': '#0dcaf0',
-            'Needs Improvement': '#ffc107',
-            'Poor': '#dc3545'
-        };
-
         new Chart(document.getElementById('ratingDistributionChart'), {
             type: 'pie',
             data: {

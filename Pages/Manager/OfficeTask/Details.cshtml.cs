@@ -31,6 +31,10 @@ namespace TM_PE.Pages.Manager.OfficeTask
         // Latest submission per ActivityID (for the Submission column)
         public Dictionary<int, ActivitySubmission> LatestSubmissions { get; set; } = new();
 
+        // Every attempt ever made per ActivityID, newest first - for the
+        // "History of Submission" modal (see Pages/Shared/_ActivitySubmissionHistoryModal.cshtml).
+        public Dictionary<int, List<ActivitySubmission>> SubmissionHistory { get; set; } = new();
+
         [TempData]
         public string? ErrorMessage { get; set; }
 
@@ -47,6 +51,7 @@ namespace TM_PE.Pages.Manager.OfficeTask
             var task = await _context.OfficeTasks
                 .Include(t => t.Assignments).ThenInclude(a => a.Employee)
                 .Include(t => t.Activities).ThenInclude(a => a.AssignedEmployee)
+                .Include(t => t.AssignedByEmployee)
                 .FirstOrDefaultAsync(t => t.OfficeTaskID == id);
 
             if (task == null)
@@ -66,12 +71,20 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 .ToListAsync();
 
             var activityIds = task.Activities.Select(a => a.ActivityID).ToList();
-            LatestSubmissions = await _context.ActivitySubmissions
+            var allSubmissions = await _context.ActivitySubmissions
+                .Include(s => s.Employee)
+                .Include(s => s.ReviewedByEmployee)
                 .Where(s => activityIds.Contains(s.ActivityID))
                 .OrderByDescending(s => s.DateSubmitted)
+                .ToListAsync();
+
+            LatestSubmissions = allSubmissions
                 .GroupBy(s => s.ActivityID)
-                .Select(g => g.First())
-                .ToDictionaryAsync(s => s.ActivityID, s => s);
+                .ToDictionary(g => g.Key, g => g.First());
+
+            SubmissionHistory = allSubmissions
+                .GroupBy(s => s.ActivityID)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             return Page();
         }
@@ -217,6 +230,10 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 return RedirectToPage(new { id = officeTaskId });
             }
 
+            // Whoever is logged in as the reviewing manager - recorded against
+            // whichever attempt gets approved/rejected below.
+            var reviewerEmployeeId = HttpContext.Session.GetInt32("AuthEmployeeId");
+
             for (int i = 0; i < activityIds.Count; i++)
             {
                 var activity = await _context.TaskActivities.FindAsync(activityIds[i]);
@@ -231,6 +248,8 @@ namespace TM_PE.Pages.Manager.OfficeTask
                     continue;
                 }
 
+                var newFeedback = i < feedbacks.Count ? feedbacks[i]?.Trim() ?? string.Empty : null;
+
                 // The manager can only Approve or Reject - never set an activity to any
                 // other status by hand, even via a hand-crafted POST.
                 if (i < statuses.Count && (statuses[i] == "Approved" || statuses[i] == "Rejected"))
@@ -244,6 +263,23 @@ namespace TM_PE.Pages.Manager.OfficeTask
                     }
 
                     activity.Status = statuses[i];
+
+                    // Record the outcome against the specific attempt being
+                    // reviewed - its own file stays tied to its own
+                    // feedback/reviewer/reviewed-date permanently, instead of
+                    // only ever living on the activity's single
+                    // current-feedback field (which a later re-upload clears).
+                    var attemptBeingReviewed = await _context.ActivitySubmissions
+                        .Where(s => s.ActivityID == activity.ActivityID)
+                        .OrderByDescending(s => s.DateSubmitted)
+                        .FirstOrDefaultAsync();
+                    if (attemptBeingReviewed != null)
+                    {
+                        attemptBeingReviewed.Status = statuses[i];
+                        attemptBeingReviewed.Feedback = string.IsNullOrWhiteSpace(newFeedback) ? null : newFeedback;
+                        attemptBeingReviewed.ReviewedByEmployeeID = reviewerEmployeeId;
+                        attemptBeingReviewed.DateReviewed = DateTime.Now;
+                    }
                 }
 
                 if (i < feedbacks.Count)

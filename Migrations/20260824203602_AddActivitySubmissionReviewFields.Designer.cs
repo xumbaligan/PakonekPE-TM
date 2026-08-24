@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TM_PE.Data;
 
@@ -11,9 +12,11 @@ using TM_PE.Data;
 namespace TM_PE.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824203602_AddActivitySubmissionReviewFields")]
+    partial class AddActivitySubmissionReviewFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -480,9 +483,6 @@ namespace TM_PE.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("JobTicketSubmissionHistoryID"));
 
-                    b.Property<int?>("ActorEmployeeID")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("DateChanged")
                         .HasColumnType("datetime2");
 
@@ -499,8 +499,6 @@ namespace TM_PE.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("JobTicketSubmissionHistoryID");
-
-                    b.HasIndex("ActorEmployeeID");
 
                     b.HasIndex("JobTicketID");
 
@@ -870,18 +868,11 @@ namespace TM_PE.Migrations
 
             modelBuilder.Entity("TM_PE.Model.JobTicketSubmissionHistory", b =>
                 {
-                    b.HasOne("TM_PE.Model.Employee", "ActorEmployee")
-                        .WithMany()
-                        .HasForeignKey("ActorEmployeeID")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("TM_PE.Model.JobTicket", "JobTicket")
                         .WithMany("SubmissionHistory")
                         .HasForeignKey("JobTicketID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ActorEmployee");
 
                     b.Navigation("JobTicket");
                 });

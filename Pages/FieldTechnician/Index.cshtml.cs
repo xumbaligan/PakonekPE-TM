@@ -41,6 +41,7 @@ namespace TM_PE.Pages.FieldTechnician
 
             AssignedJobOrders = await _context.JobTickets
                 .Include(t => t.Assignments)
+                .Include(t => t.AssignedByEmployee)
                 .Where(t => t.Assignments.Any(a => a.EmployeeID == employeeId.Value))
                 .OrderByDescending(t => t.DateCreated)
                 .ToListAsync();

@@ -54,6 +54,7 @@
                     @foreach (var e in Model.Evaluations)
                     {
                         var results = IndexModel.BuildResultViews(e);
+                        var evalStats = Model.EvaluationStats.GetValueOrDefault(e.EvaluationID) ?? new TM_PE.Model.EmployeePerformanceStats();
 
                         <tr>
                             <td>
@@ -83,6 +84,7 @@
                                         data-bs-toggle="modal" data-bs-target="#evaluationModal"
                                         data-employee="@(e.Employee?.FullName ?? "-")"
                                         data-role="@(e.Employee?.RoleType.ToString() ?? "-")"
+                                        data-role-type="@(e.Employee?.RoleType.ToString() ?? "")"
                                         data-period="@e.EvaluationPeriod"
                                         data-evaluator="@e.EvaluatorName"
                                         data-date="@e.EvaluationDate.ToString("MMMM d, yyyy")"
@@ -91,6 +93,12 @@
                                         data-status="@e.EvaluationStatus"
                                         data-feedback="@e.GeneralFeedback"
                                         data-results="@System.Text.Json.JsonSerializer.Serialize(results)"
+                                        data-completed="@evalStats.CompletedJobsTasks"
+                                        data-ontime="@evalStats.OnTimeRate.ToString("0")"
+                                        data-rescheduled="@evalStats.Rescheduled"
+                                        data-cancelled="@evalStats.Cancelled"
+                                        data-rejected="@evalStats.RejectedActivities"
+                                        data-overdue="@evalStats.OverdueTasks"
                                         title="View full evaluation">
                                     <i class="bi bi-eye"></i>
                                 </button>
@@ -112,6 +120,6 @@
 <partial name="_EvaluationModal" />
 
 @section Scripts {
-    <script src="~/js/star-rating.js"></script>
-    <script src="~/js/evaluation-modal.js"></script>
+    <script src="~/js/star-rating.js" asp-append-version="true"></script>
+    <script src="~/js/evaluation-modal.js" asp-append-version="true"></script>
 }

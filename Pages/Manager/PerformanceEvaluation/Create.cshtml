@@ -146,7 +146,6 @@
                                         data-roletype="@emp.RoleType"
                                         data-completed="@s.CompletedJobsTasks"
                                         data-ontime="@s.OnTimeRate.ToString("0")"
-                                        data-jobcompletion="@s.JobCompletionRate.ToString("0")"
                                         data-rescheduled="@s.Rescheduled"
                                         data-cancelled="@s.Cancelled"
                                         data-rejected="@s.RejectedActivities"
@@ -199,14 +198,14 @@
             @* ===================== Field Technician criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="fieldTechnicianCriteriaCard">
                 <h5 class="mb-1">Field Technician Criteria</h5>
-                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 5 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
+                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 4 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
                 <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.FieldTechnicianCriteria)" />
             </div>
 
             @* ===================== Office Staff criteria ===================== *@
             <div class="card p-4 mb-4 d-none" id="officeStaffCriteriaCard">
                 <h5 class="mb-1">Office Staff Criteria</h5>
-                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 5 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
+                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 4 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
                 <partial name="_CriteriaStarRows" model="Model.RowsFor(Model.OfficeStaffCriteria)" />
             </div>
 
@@ -222,7 +221,7 @@
             <div class="card p-4 mb-3 sticky-top" style="top:1rem">
                 <h6 class="text-muted">Overall Score (preview)</h6>
                 <div class="display-6 fw-bold" id="overallScorePreview">0.0</div>
-                <div class="text-muted small">out of 100</div>
+                <div class="text-muted small">out of 4</div>
                 <div class="mt-2 d-flex align-items-center gap-2">
                     <span id="overallStarsPreview"></span>
                     <span class="badge bg-primary-subtle text-primary" id="overallRatingPreview">—</span>
@@ -250,9 +249,9 @@
     <script>
         (function () {
             // Changing the period reloads the page via GET so the server can
-            // recompute period-scoped stats/automated criteria for the new
-            // Month/Year - there's no client-side copy of every employee's
-            // per-period ticket/task history to redo that math in JS.
+            // recompute period-scoped stats for the new Month/Year - there's
+            // no client-side copy of every employee's per-period ticket/task
+            // history to redo that math in JS.
             const periodMonthSelect = document.getElementById('periodMonthSelect');
             const periodYearSelect = document.getElementById('periodYearSelect');
             const employeeSelect = document.getElementById('employeeSelect');
@@ -323,7 +322,7 @@
             // Rating bands mirrored from Model.EvaluationScoring for the live
             // client-side preview only - the server always recalculates and is
             // the source of truth for what actually gets saved.
-            const bands = [[90, 'Excellent'], [80, 'Very Good'], [70, 'Good'], [60, 'Needs Improvement'], [0, 'Poor']];
+            const bands = [[3.6, 'Excellent'], [3.2, 'Very Good'], [2.8, 'Good'], [2.4, 'Needs Improvement'], [0, 'Poor']];
 
             function ratingFor(score) {
                 for (const [min, label] of bands) { if (score >= min) return label; }
@@ -346,11 +345,11 @@
                 document.querySelectorAll('.star-value-input:not(:disabled)').forEach(input => {
                     const weight = parseFloat(input.dataset.weight || '0');
                     const stars = window.StarRating.snap(input.value || '0');
-                    total += weight * stars / 5;
+                    total += weight / 100 * stars;
                 });
                 scorePreview.textContent = total.toFixed(1);
                 ratingPreview.textContent = ratingFor(total);
-                starsPreview.innerHTML = window.StarRating.render(total / 20);
+                starsPreview.innerHTML = window.StarRating.render(total);
             }
 
             const tile3 = document.getElementById('statTile3');
@@ -407,32 +406,6 @@
                 }
             }
 
-            // Job Completion / Timeliness criteria (see Model.Criteria.MetricType)
-            // are auto-scored from the selected technician's actual job ticket
-            // record instead of starting at 0. Their star-rating widgets are
-            // rendered readonly server-side (_CriteriaStarRows.cshtml), so this
-            // is the only way their value ever changes - the manager can't
-            // adjust them by hand. A rate out of 100 maps to stars out of 5 the
-            // same way EvaluationScoring.StarsFor does server-side (rate / 20),
-            // then snaps to the nearest half star.
-            function autoFillMetricCriteria(card, opt) {
-                card.querySelectorAll('[data-star-input]').forEach(function (container) {
-                    const metricType = container.dataset.metricType;
-                    if (metricType !== 'JobCompletion' && metricType !== 'Timeliness') return;
-
-                    const rate = parseFloat((metricType === 'JobCompletion'
-                        ? opt.dataset.jobcompletion
-                        : opt.dataset.ontime) || '0');
-
-                    const target = document.getElementById(container.dataset.target);
-                    if (!target) return;
-
-                    const stars = window.StarRating.snap(rate / 20);
-                    target.value = stars;
-                    window.StarRating.paint(container, stars);
-                });
-            }
-
             employeeSelect.addEventListener('change', function () {
                 const opt = employeeSelect.options[employeeSelect.selectedIndex];
                 const roleType = opt ? opt.getAttribute('data-roletype') : '';
@@ -451,7 +424,6 @@
                 const isFieldTechnician = roleType === 'FieldTechnician';
                 setBlockEnabled(ftCard, isFieldTechnician);
                 setBlockEnabled(osCard, roleType === 'OfficeStaff');
-                if (isFieldTechnician) autoFillMetricCriteria(ftCard, opt);
                 recalcPreview();
             });
 

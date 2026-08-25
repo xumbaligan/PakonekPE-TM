@@ -160,7 +160,7 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             if (status == EvaluationStatus.Finalized)
             {
-                var workQualityError = EvaluationScoring.ValidateWorkQualityRequired(
+                var workQualityError = EvaluationScoring.ValidateAllCriteriaRated(
                     allowedCriteria, Results.Select(r => (r.CriteriaID, r.StarRating, r.Feedback)));
                 if (workQualityError != null)
                 {

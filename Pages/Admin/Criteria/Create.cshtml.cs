@@ -14,11 +14,6 @@ public class CreateModel : PageModel
 
     [BindProperty] public CriteriaModel Item { get; set; } = new() { IsActive = true };
 
-    // Scoring Source values already claimed by an active Field Technician
-    // criterion - the Scoring Source dropdown disables these so a manager
-    // can't pick one that CriteriaValidation would just reject on Save.
-    public List<string> UsedFieldTechnicianMetricTypes { get; set; } = new();
-
     // Weight already committed to active criteria for each Role Type, so the
     // Create form can show how much of the 100% is still available before
     // CriteriaValidation would reject the save.
@@ -27,11 +22,6 @@ public class CreateModel : PageModel
 
     public async Task OnGetAsync()
     {
-        UsedFieldTechnicianMetricTypes = await _db.Criteria
-            .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive)
-            .Select(c => c.MetricType.ToString())
-            .ToListAsync();
-
         OfficeStaffWeightUsed = await _db.Criteria
             .Where(c => c.RoleType == RoleType.OfficeStaff && c.IsActive)
             .SumAsync(c => (decimal?)c.Weight) ?? 0;

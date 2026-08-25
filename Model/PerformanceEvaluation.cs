@@ -13,9 +13,12 @@ namespace TM_PE.Model
     // A Performance Evaluation is its own historical record. Creating, editing,
     // or finalizing an evaluation never writes back to JobTicket or OfficeTask.
     //
-    // Scoring is star-based: the manager awards 0.5-5 stars per criterion and
-    // the system converts that into weighted points (see EvaluationScoring), so
-    // the Overall Score still lands out of 100.
+    // Scoring is star-based: the manager awards 0.5-4 stars per criterion and
+    // the system converts that into weighted points (see EvaluationScoring).
+    // Each criterion's weight is a percentage (e.g. 30%) that becomes a
+    // fraction of the star rating (0.30 * 3 stars = 0.9), and the Overall
+    // Score is the sum of those fractions - since a RoleType's weights add up
+    // to 100%, the Overall Score always lands out of 4.
     //
     // The appraisal decision lives directly on the evaluation instead of being a
     // separate module: one Evaluation Date (also the appraisal date), one Status
@@ -87,7 +90,7 @@ namespace TM_PE.Model
         // Performance Evaluation -> Evaluation Results -> Criteria
         public ICollection<EvaluationResult> Results { get; set; } = new List<EvaluationResult>();
 
-        // Overall Score expressed back as stars out of 5, for star displays.
+        // Overall Score expressed back as stars out of 4, for star displays.
         [NotMapped]
         public decimal OverallStars => EvaluationScoring.StarsFor(OverallScore);
 
@@ -114,17 +117,19 @@ namespace TM_PE.Model
         [ForeignKey(nameof(CriteriaID))]
         public Criteria? Criteria { get; set; }
 
-        // What the manager actually clicked: 0-5 stars in half-star steps, so
+        // What the manager actually clicked: 0-4 stars in half-star steps, so
         // 3.5 is a real, storable rating. decimal(2,1) is exactly wide enough.
-        [Range(typeof(decimal), "0", "5", ErrorMessage = "Rating must be between 0 and 5 stars.")]
+        [Range(typeof(decimal), "0", "4", ErrorMessage = "Rating must be between 0 and 4 stars.")]
         [Column(TypeName = "decimal(2,1)")]
         public decimal StarRating { get; set; }
 
-        // Points earned for this criterion, derived from StarRating and the
-        // criterion's Weight (weights for a RoleType add up to 100, so the
-        // Overall Score ends up out of 100 automatically). Stored rather than
-        // recomputed so past evaluations stay stable if a weight changes.
-        [Range(0, 100)]
+        // Points earned for this criterion: the criterion's Weight (a
+        // percentage) as a fraction of the star rating - e.g. a criterion
+        // weighted 30% rated 3 stars earns 0.30 * 3 = 0.9 points. Weights for
+        // a RoleType add up to 100%, so the Overall Score ends up out of 4
+        // automatically. Stored rather than recomputed so past evaluations
+        // stay stable if a weight changes.
+        [Range(0, EvaluationScoring.MaxStars)]
         [Column(TypeName = "decimal(5,2)")]
         public decimal Score { get; set; }
 
@@ -137,12 +142,12 @@ namespace TM_PE.Model
     // Razor page.
     public static class EvaluationScoring
     {
-        public const int MaxStars = 5;
+        public const int MaxStars = 4;
 
         // Ratings move in half-star steps.
         public const decimal StarStep = 0.5m;
 
-        // Snaps any incoming value onto the nearest valid half-star in 0..5, so
+        // Snaps any incoming value onto the nearest valid half-star in 0..4, so
         // a hand-crafted POST can never store 3.7 stars.
         public static decimal NormalizeStars(decimal stars)
         {
@@ -150,18 +155,21 @@ namespace TM_PE.Model
             return Math.Round(clamped / StarStep, 0, MidpointRounding.AwayFromZero) * StarStep;
         }
 
-        // A criterion worth 25% rated 3.5/5 stars earns 17.50 of its 25 points.
+        // A criterion worth 30% rated 3/4 stars earns 0.30 * 3 = 0.9 points -
+        // the weight as a fraction of the star rating, not a fraction of 100.
         public static decimal ScoreFor(decimal stars, decimal weight) =>
-            Math.Round(weight * NormalizeStars(stars) / MaxStars, 2, MidpointRounding.AwayFromZero);
+            Math.Round(weight / 100m * NormalizeStars(stars), 2, MidpointRounding.AwayFromZero);
 
-        // Turns an out-of-100 score back into stars out of 5. Not snapped to
-        // half-steps: this is an averaged display value, and the star widget
-        // renders partial fills anyway.
-        public static decimal StarsFor(decimal scoreOutOf100) =>
-            Math.Round(Math.Clamp(scoreOutOf100, 0, 100) / 20m, 2, MidpointRounding.AwayFromZero);
+        // The Overall Score is already expressed in stars out of 4 (weights
+        // for a RoleType add up to 100%, so their fractions of the star
+        // ratings sum to at most 4). This just clamps/rounds it for display.
+        // Not snapped to half-steps: this is an averaged display value, and
+        // the star widget renders partial fills anyway.
+        public static decimal StarsFor(decimal overallScore) =>
+            Math.Round(Math.Clamp(overallScore, 0, MaxStars), 2, MidpointRounding.AwayFromZero);
 
         // How much of star `starIndex` (1-based) should be filled, as a
-        // percentage. 3.5 stars gives 100/100/100/50/0 across the five stars.
+        // percentage. 3.5 stars gives 100/100/100/50 across the four stars.
         // Lives here so the Razor partials don't each need their own copy -
         // a @functions block in a partial gets emitted twice and collides.
         public static decimal StarFillPercent(decimal value, int starIndex)
@@ -172,47 +180,53 @@ namespace TM_PE.Model
             return filled * 100m;
         }
 
-        // Highest threshold first; the first band the score meets or exceeds wins.
+        // Highest threshold first; the first band the score meets or exceeds
+        // wins. Thresholds are the same 90/80/70/60% bands as before, just
+        // expressed out of 4 instead of out of 5 (e.g. 90% of 4 = 3.6).
         public static readonly (decimal MinScore, string Rating)[] Bands =
         {
-            (90m, "Excellent"),
-            (80m, "Very Good"),
-            (70m, "Good"),
-            (60m, "Needs Improvement"),
+            (3.6m, "Excellent"),
+            (3.2m, "Very Good"),
+            (2.8m, "Good"),
+            (2.4m, "Needs Improvement"),
             (0m,  "Poor")
         };
 
-        public static string RatingFor(decimal overallScoreOutOf100)
+        public static string RatingFor(decimal overallScoreOutOfFour)
         {
             foreach (var band in Bands)
             {
-                if (overallScoreOutOf100 >= band.MinScore) return band.Rating;
+                if (overallScoreOutOfFour >= band.MinScore) return band.Rating;
             }
             return "Poor";
         }
 
-        // Job Completion and Timeliness are auto-scored straight from a
-        // technician's job ticket record and can be misleading on their own -
-        // e.g. Timeliness can still read 100% while the technician currently
-        // has an overdue ticket in progress, since that ticket hasn't finished
-        // (late or otherwise) yet. Work Quality is the one criterion every role
-        // type always rates by hand, so before an evaluation is finalized every
-        // Work Quality criterion must carry both a star rating and written
-        // feedback - the manager's own judgment call is always on record, never
-        // just whatever the automated numbers happened to say.
-        public static string? ValidateWorkQualityRequired(
+        // Every criterion is rated by hand, so before an evaluation is
+        // finalized each one must carry at least a star rating. Written
+        // feedback is additionally required on Create - the manager's own
+        // judgment call on record for a brand-new evaluation - but not on
+        // Edit, where requireFeedback is passed as false so an existing
+        // evaluation can be finalized without retyping feedback for every
+        // criterion.
+        public static string? ValidateAllCriteriaRated(
             IEnumerable<Criteria> allowedCriteria,
-            IEnumerable<(int CriteriaID, decimal StarRating, string? Feedback)> results)
+            IEnumerable<(int CriteriaID, decimal StarRating, string? Feedback)> results,
+            bool requireFeedback = true)
         {
             var byId = results.ToDictionary(r => r.CriteriaID);
 
-            foreach (var c in allowedCriteria.Where(c => c.MetricType == CriteriaMetricType.WorkQuality))
+            foreach (var c in allowedCriteria)
             {
                 byId.TryGetValue(c.CriteriaId, out var r);
 
-                if (NormalizeStars(r.StarRating) <= 0 || string.IsNullOrWhiteSpace(r.Feedback))
+                if (NormalizeStars(r.StarRating) <= 0)
                 {
-                    return $"\"{c.CriteriaName}\" is a Work Quality criterion - please rate it and add feedback before finalizing.";
+                    return $"\"{c.CriteriaName}\" needs a star rating before finalizing.";
+                }
+
+                if (requireFeedback && string.IsNullOrWhiteSpace(r.Feedback))
+                {
+                    return $"\"{c.CriteriaName}\" needs feedback before finalizing.";
                 }
             }
 

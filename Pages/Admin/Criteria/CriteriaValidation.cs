@@ -6,14 +6,9 @@ using CriteriaModel = TM_PE.Model.Criteria;
 namespace TM_PE.Pages.Admin.Criteria;
 
 // Shared by Create/Edit (Admin and, if it ever grows its own forms, Manager
-// too). Field Technician criteria are automated around exactly three
-// MetricType values (see Model.Criteria.MetricType) - Job Completion,
-// Timeliness, Work Quality - so a technician's Overall Score is never scored
-// twice against the same underlying number. Office Staff criteria are always
-// WorkQuality, so the MetricType-uniqueness rule doesn't apply to them, but
-// their weights still feed into the same Overall Score, so the active set for
-// either role type can never add up to more than the 100% the Overall Score
-// is out of.
+// too). Every criterion is rated by hand, and its weight feeds into the same
+// Overall Score, so the active set for either role type can never add up to
+// more than the 100% the Overall Score is out of.
 public static class CriteriaValidation
 {
     // Pass excludingId when editing an existing criterion so it doesn't
@@ -53,12 +48,6 @@ public static class CriteriaValidation
                 && (excludingId == null || c.CriteriaId != excludingId.Value))
             .ToListAsync();
 
-        if (item.RoleType == RoleType.FieldTechnician && others.Any(c => c.MetricType == item.MetricType))
-        {
-            return $"An active Field Technician criterion already uses \"{DisplayName(item.MetricType)}\" as its scoring source. " +
-                   "Job Completion, Timeliness, and Work Quality can each only be used once - deactivate the other one first if you want to replace it.";
-        }
-
         var totalWeight = others.Sum(c => c.Weight) + item.Weight;
         if (totalWeight > 100)
         {
@@ -69,11 +58,4 @@ public static class CriteriaValidation
 
         return null;
     }
-
-    private static string DisplayName(CriteriaMetricType type) => type switch
-    {
-        CriteriaMetricType.JobCompletion => "Job Completion",
-        CriteriaMetricType.Timeliness => "Timeliness",
-        _ => "Work Quality"
-    };
 }

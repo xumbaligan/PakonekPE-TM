@@ -19,9 +19,7 @@ namespace TM_PE.Model
         public int Cancelled { get; set; }
 
         // Every job ticket ever assigned to this employee (any status), and
-        // how many of those they actually completed - the basis for the
-        // automated "Job Completion" evaluation criterion (see
-        // Model.Criteria.MetricType). Tracked separately from
+        // how many of those they actually completed. Tracked separately from
         // CompletedJobsTasks/OnTimeEligible above because those also count
         // completed Office Tasks, which would understate a mixed-role total.
         public int JobTicketsAssigned { get; set; }

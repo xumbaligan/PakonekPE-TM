@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model IndexModel
 @{
     ViewData["Title"] = "Dashboard";
@@ -8,53 +8,77 @@
 <h2 class="mb-4">Dashboard</h2>
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon"><i class="bi bi-building"></i></div>
-                <div><div class="text-muted small">Departments</div><h3 class="mb-0">@Model.DepartmentCount</h3></div>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-building"></i></div>
+            <div>
+                <div class="stat-label">Departments</div>
+                <div class="stat-value">@Model.DepartmentCount</div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon"><i class="bi bi-people"></i></div>
-                <div><div class="text-muted small">Employees</div><h3 class="mb-0">@Model.EmployeeCount</h3></div>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="stat-label">Employees</div>
+                <div class="stat-value">@Model.EmployeeCount</div>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon"><i class="bi bi-list-check"></i></div>
-                <div><div class="text-muted small">Active Criteria</div><h3 class="mb-0">@Model.CriteriaCount</h3></div>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-list-check"></i></div>
+            <div>
+                <div class="stat-label">Active Criteria</div>
+                <div class="stat-value">@Model.CriteriaCount</div>
             </div>
         </div>
     </div>
 </div>
-
+<h5 class="mb-3">Workload - Employee Assignment</h5>
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon"><i class="bi bi-kanban"></i></div>
-                <div><div class="text-muted small">Active Office Tasks</div><h3 class="mb-0">@Model.ActiveOfficeTaskCount</h3></div>
+    <div class="col-6 col-md">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-activity"></i></div>
+            <div>
+                <div class="stat-label">Total Active</div>
+                <div class="stat-value">@Model.ActiveOfficeTaskCount</div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon text-danger"><i class="bi bi-exclamation-triangle"></i></div>
-                <div><div class="text-muted small">Overdue Office Tasks</div><h3 class="mb-0">@Model.OverdueOfficeTaskCount</h3></div>
+    <div class="col-6 col-md">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-label">Pending</div>
+                <div class="stat-value">@Model.PendingOfficeTaskCount</div>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card card-stat p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="icon text-success"><i class="bi bi-check2-circle"></i></div>
-                <div><div class="text-muted small">Completed Office Tasks</div><h3 class="mb-0">@Model.CompletedOfficeTaskCount</h3></div>
+    <div class="col-6 col-md">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-play-circle"></i></div>
+            <div>
+                <div class="stat-label">In Progress</div>
+                <div class="stat-value">@Model.InProgressOfficeTaskCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-label">Completed</div>
+                <div class="stat-value">@Model.CompletedOfficeTaskCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value">@Model.OverdueOfficeTaskCount</div>
             </div>
         </div>
     </div>
@@ -63,63 +87,102 @@
 <h5 class="mb-3">Workload — Job Tickets</h5>
 <div class="row g-3 mb-4">
     <div class="col-6 col-md">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Total Active</div><h3 class="mb-0">@Model.TotalActiveJobs</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-activity"></i></div>
+            <div>
+                <div class="stat-label">Total Active</div>
+                <div class="stat-value">@Model.TotalActiveJobs</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Pending</div><h3 class="mb-0">@Model.PendingJobs</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-label">Pending</div>
+                <div class="stat-value">@Model.PendingJobs</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">In Progress</div><h3 class="mb-0">@Model.InProgressJobs</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-play-circle"></i></div>
+            <div>
+                <div class="stat-label">In Progress</div>
+                <div class="stat-value">@Model.InProgressJobs</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Completed</div><h3 class="mb-0 text-success">@Model.CompletedJobs</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-label">Completed</div>
+                <div class="stat-value">@Model.CompletedJobs</div>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Overdue</div><h3 class="mb-0 text-danger">@Model.OverdueJobs</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="stat-label">Overdue</div>
+                <div class="stat-value">@Model.OverdueJobs</div>
+            </div>
         </div>
     </div>
 </div>
 
-<h5 class="mb-3">Job Performance</h5>
+@* <h5 class="mb-3">Job Performance</h5>
 <div class="row g-3 mb-4">
     <div class="col-md-3 col-6">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Completion Rate</div><h3 class="mb-0">@Model.JobCompletionRate.ToString("0")%</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-graph-up-arrow"></i></div>
+            <div>
+                <div class="stat-label">Completion Rate</div>
+                <div class="stat-value">@Model.JobCompletionRate.ToString("0")%</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3 col-6">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">On-Time Completion</div><h3 class="mb-0">@Model.OnTimeCompletionRate.ToString("0")%</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-clock-history"></i></div>
+            <div>
+                <div class="stat-label">On-Time Completion</div>
+                <div class="stat-value">@Model.OnTimeCompletionRate.ToString("0")%</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3 col-6">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Rescheduled Jobs</div><h3 class="mb-0">@Model.RescheduledJobsCount</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-arrow-repeat"></i></div>
+            <div>
+                <div class="stat-label">Rescheduled Jobs</div>
+                <div class="stat-value">@Model.RescheduledJobsCount</div>
+            </div>
         </div>
     </div>
     <div class="col-md-3 col-6">
-        <div class="card card-stat p-3 text-center">
-            <div class="text-muted small">Cancelled Jobs</div><h3 class="mb-0">@Model.CancelledJobsCount</h3>
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-x-circle"></i></div>
+            <div>
+                <div class="stat-label">Cancelled Jobs</div>
+                <div class="stat-value">@Model.CancelledJobsCount</div>
+            </div>
         </div>
     </div>
 </div>
-
+ *@
 <h5 class="mb-3">Employee Performance</h5>
 <div class="row g-3 mb-4">
     <div class="col-lg-4">
-        <div class="card p-3 h-100">
-            <div class="text-muted small">Average Performance Score</div>
-            <h2 class="mb-1">@Model.AveragePerformanceScore.ToString("0.#")</h2>
-            <div class="text-muted small mb-2">out of 100, across latest evaluations</div>
+        <div class="stat-tile">
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-speedometer2"></i></div>
+                <div class="stat-label">Average Performance Score</div>
+            </div>
+            <div class="stat-value">@Model.AveragePerformanceScore.ToString("0.#")</div>
+            <div class="text-muted small mb-2">out of 4, across latest evaluations</div>
             <div class="d-flex justify-content-between small">
                 <span>Office Staff avg: <strong>@Model.AverageOfficeStaffScore.ToString("0.#")</strong></span>
                 <span>Field Technician avg: <strong>@Model.AverageFieldTechnicianScore.ToString("0.#")</strong></span>
@@ -127,8 +190,11 @@
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card p-3 h-100">
-            <div class="text-muted small mb-2">Highest Performing Employees</div>
+        <div class="stat-tile">
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-trophy"></i></div>
+                <div class="stat-label">Highest Performing Employees</div>
+            </div>
             @if (!Model.TopPerformers.Any())
             {
                 <div class="text-muted small">No evaluations recorded yet.</div>
@@ -146,8 +212,11 @@
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card p-3 h-100">
-            <div class="text-muted small mb-2">Employees Requiring Improvement</div>
+        <div class="stat-tile">
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+                <div class="stat-label">Employees Requiring Improvement</div>
+            </div>
             @if (!Model.NeedsImprovement.Any())
             {
                 <div class="text-muted small">None right now.</div>
@@ -165,4 +234,3 @@
         </div>
     </div>
 </div>
-

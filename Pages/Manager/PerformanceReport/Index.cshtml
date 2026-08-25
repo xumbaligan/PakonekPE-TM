@@ -159,8 +159,6 @@
                     <th>Employee Name</th>
                     <th style="width:150px">Role</th>
                     <th style="width:170px">Department</th>
-                    <th style="width:110px" class="text-center">Appraisals</th>
-                    <th style="width:110px" class="text-center">Completed</th>
                     <th style="width:110px" class="text-center">Average</th>
                     <th style="width:210px">Rating</th>
                 </tr>
@@ -169,7 +167,7 @@
                 @if (!Model.Rows.Any())
                 {
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="5" class="text-center text-muted py-4">
                             No employees match the current filters.
                         </td>
                     </tr>
@@ -192,8 +190,6 @@
                                 }
                             </td>
                             <td>@r.DepartmentName</td>
-                            <td class="text-center">@r.Appraisals</td>
-                            <td class="text-center">@r.Completed</td>
                             <td class="text-center">
                                 @if (r.Appraisals == 0)
                                 {
@@ -259,5 +255,5 @@
         })();
     </script>
 
-    <script src="~/js/performance-report-charts.js"></script>
+    <script src="~/js/performance-report-charts.js" asp-append-version="true"></script>
 }

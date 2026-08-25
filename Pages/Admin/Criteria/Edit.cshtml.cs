@@ -15,11 +15,6 @@ public class EditModel : PageModel
 
     [BindProperty] public CriteriaModel Item { get; set; } = new();
 
-    // Scoring Source values already claimed by another active Field
-    // Technician criterion (excluding this one) - the dropdown disables
-    // these so a manager can't pick one CriteriaValidation would reject.
-    public List<string> UsedFieldTechnicianMetricTypes { get; set; } = new();
-
     // Weight already committed to other active criteria for each Role Type
     // (excluding this one), so the Edit form can show how much of the 100%
     // is still available before CriteriaValidation would reject the save.
@@ -31,7 +26,7 @@ public class EditModel : PageModel
         var c = await _db.Criteria.FindAsync(id);
         if (c == null) return NotFound();
         Item = c;
-        await LoadUsedMetricTypesAsync();
+        await LoadWeightUsedAsync();
         return Page();
     }
 
@@ -39,7 +34,7 @@ public class EditModel : PageModel
     {
         if (!ModelState.IsValid)
         {
-            await LoadUsedMetricTypesAsync();
+            await LoadWeightUsedAsync();
             return Page();
         }
 
@@ -47,7 +42,7 @@ public class EditModel : PageModel
         if (error != null)
         {
             ModelState.AddModelError(string.Empty, error);
-            await LoadUsedMetricTypesAsync();
+            await LoadWeightUsedAsync();
             return Page();
         }
 
@@ -56,13 +51,8 @@ public class EditModel : PageModel
         return RedirectToPage("Index");
     }
 
-    private async Task LoadUsedMetricTypesAsync()
+    private async Task LoadWeightUsedAsync()
     {
-        UsedFieldTechnicianMetricTypes = await _db.Criteria
-            .Where(c => c.RoleType == RoleType.FieldTechnician && c.IsActive && c.CriteriaId != Item.CriteriaId)
-            .Select(c => c.MetricType.ToString())
-            .ToListAsync();
-
         OfficeStaffWeightUsed = await _db.Criteria
             .Where(c => c.RoleType == RoleType.OfficeStaff && c.IsActive && c.CriteriaId != Item.CriteriaId)
             .SumAsync(c => (decimal?)c.Weight) ?? 0;

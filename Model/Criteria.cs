@@ -11,14 +11,12 @@ namespace TM_PE.Model
         FieldTechnician
     }
 
-    // How a criterion's star rating gets filled in on a Performance
-    // Evaluation. WorkQuality (the default) is the original behavior - the
-    // manager rates it by hand. JobCompletion and Timeliness are only ever
-    // offered for Field Technician criteria (see Admin/Manager > Criteria):
-    // Manager/PerformanceEvaluation/Create.cshtml auto-fills their stars from
-    // that technician's actual job ticket record (completion rate / on-time
-    // rate) when the technician is selected, and locks them read-only (see
-    // _CriteriaStarRows.cshtml) - only WorkQuality is ever rated by hand.
+    // Historically distinguished how a criterion's star rating got filled in
+    // (WorkQuality by hand vs. JobCompletion/Timeliness auto-filled from a
+    // technician's job ticket record). Every criterion is now rated by hand
+    // regardless of this value - the Admin/Manager > Criteria forms no longer
+    // expose a way to set it, and it always saves as WorkQuality for new or
+    // edited criteria. Kept only so existing rows in tbl_criteria still load.
     public enum CriteriaMetricType
     {
         WorkQuality,

@@ -57,10 +57,9 @@ namespace TM_PE.Pages.Manager.PerformanceReport
         public int EmployeeCount => Rows.Count;
         public int AppraisalCount => Rows.Sum(r => r.Appraisals);
 
-        // Counts distinct completed job tickets/office tasks, not
-        // Rows.Sum(r => r.Completed) — a job ticket or task assigned to
-        // multiple employees would otherwise be counted once per assignee
-        // instead of once for the work item itself.
+        // Counts distinct completed job tickets/office tasks — a job ticket
+        // or task assigned to multiple employees only counts once toward
+        // this tile, not once per assignee.
         public int CompletedWorkItems { get; set; }
 
         // Averaged over employees who actually have an evaluation in the
@@ -145,7 +144,6 @@ namespace TM_PE.Pages.Manager.PerformanceReport
             public RoleType RoleType { get; set; }
             public string DepartmentName { get; set; } = "-";
             public int Appraisals { get; set; }
-            public int Completed { get; set; }
             public decimal AverageScore { get; set; }
 
             public decimal Stars => EvaluationScoring.StarsFor(AverageScore);
@@ -184,7 +182,7 @@ namespace TM_PE.Pages.Manager.PerformanceReport
             csv.AppendLine($"Average Score,{AverageScore.ToString("0.##")}");
             csv.AppendLine($"Completed Work Items,{CompletedWorkItems}");
             csv.AppendLine();
-            csv.AppendLine("Employee Name,Role,Department,Appraisals,Completed,Average,Rating");
+            csv.AppendLine("Employee Name,Role,Department,Average,Rating");
 
             foreach (var r in Rows)
             {
@@ -192,8 +190,6 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                     Csv(r.EmployeeName),
                     Csv(r.RoleLabel),
                     Csv(r.DepartmentName),
-                    r.Appraisals,
-                    r.Completed,
                     r.Appraisals == 0 ? "" : r.AverageScore.ToString("0.##"),
                     Csv(r.Rating)));
             }
@@ -290,10 +286,6 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                 })
                 .ToDictionaryAsync(x => x.EmployeeID, x => x);
 
-            // Completed work items reuse the same helper the evaluation pages
-            // use, so "Completed" means the same thing everywhere in the system.
-            var stats = await EmployeePerformanceStatsBuilder.BuildAsync(_context, employeeIds);
-
             // Distinct completed job tickets/office tasks among these
             // employees — a ticket or task with several assignees must only
             // count once toward the tile, not once per assignee.
@@ -315,10 +307,14 @@ namespace TM_PE.Pages.Manager.PerformanceReport
 
             CompletedWorkItems = completedTicketCount + completedTaskCount;
 
+            // Highest average score first, so the table reads best-to-worst;
+            // employees with no evaluation in the selected filters (Appraisals
+            // == 0, AverageScore always 0) have nothing to rank by, so they
+            // sink to the bottom, alphabetically, instead of mixing in among
+            // scored employees just because their score also reads as 0.
             Rows = employees.Select(e =>
             {
                 evaluationSummaries.TryGetValue(e.EmployeeId, out var summary);
-                var stat = stats.GetValueOrDefault(e.EmployeeId) ?? new EmployeePerformanceStats();
 
                 return new ReportRow
                 {
@@ -327,12 +323,15 @@ namespace TM_PE.Pages.Manager.PerformanceReport
                     RoleType = e.RoleType,
                     DepartmentName = e.Department?.DepartmentName ?? "-",
                     Appraisals = summary?.Count ?? 0,
-                    Completed = stat.CompletedJobsTasks,
                     AverageScore = summary == null
                         ? 0
                         : Math.Round(summary.Average, 2, MidpointRounding.AwayFromZero)
                 };
-            }).ToList();
+            })
+            .OrderByDescending(r => r.Appraisals > 0)
+            .ThenByDescending(r => r.AverageScore)
+            .ThenBy(r => r.EmployeeName)
+            .ToList();
         }
     }
 }

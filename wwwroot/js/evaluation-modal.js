@@ -32,8 +32,8 @@
         set('evalPeriod', d.period || '-');
         set('evalDate', d.date || '-');
         set('evalEvaluator', d.evaluator || '-');
-        set('evalScore', (d.overallScore || '0') + ' / 100');
-        setHtml('evalStarsTop', window.StarRating.render((parseFloat(d.overallScore || '0')) / 20, ''));
+        set('evalScore', (d.overallScore || '0') + ' / 4');
+        setHtml('evalStarsTop', window.StarRating.render(parseFloat(d.overallScore || '0'), ''));
 
         const ratingBadge = document.getElementById('evalRatingBadge');
         if (ratingBadge) {
@@ -98,7 +98,7 @@
                 body.innerHTML = results.map(r => `
                     <tr>
                         <td class="small">${escapeHtml(r.CriteriaName)}<div class="text-muted" style="font-size:.75rem">Weight ${r.Weight}%</div></td>
-                        <td>${window.StarRating.render(r.Stars)}<div class="text-muted" style="font-size:.72rem">${r.Stars} / 5</div></td>
+                        <td>${window.StarRating.render(r.Stars)}<div class="text-muted" style="font-size:.72rem">${r.Stars} / 4</div></td>
                         <td class="small">${r.Score} / ${r.Weight}</td>
                         <td class="small">${r.Feedback ? escapeHtml(r.Feedback) : '<span class="text-muted">-</span>'}</td>
                     </tr>`).join('');

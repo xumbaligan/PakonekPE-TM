@@ -20,8 +20,12 @@ public class IndexModel : PageModel
     public int CriteriaCount { get; set; }
 
     // ---- Office Task summary counts (detailed workload views live under
-    // Manager/WorkLoadMonitoring now) ----
+    // Manager/WorkLoadMonitoring now). Mirrors the same five-tile breakdown
+    // as the Job Ticket workload below, so Office Staff and Field Technician
+    // workload read the same way at a glance.
     public int ActiveOfficeTaskCount { get; set; }
+    public int PendingOfficeTaskCount { get; set; }
+    public int InProgressOfficeTaskCount { get; set; }
     public int OverdueOfficeTaskCount { get; set; }
     public int CompletedOfficeTaskCount { get; set; }
 
@@ -61,8 +65,10 @@ public class IndexModel : PageModel
         // Office Tasks yet today.
         await RefreshOverdueStatusesAsync(tasks);
 
-        ActiveOfficeTaskCount = tasks.Count(t => t.Status is "Pending" or "In Progress" or "Overdue");
+        PendingOfficeTaskCount = tasks.Count(t => t.Status == "Pending");
+        InProgressOfficeTaskCount = tasks.Count(t => t.Status == "In Progress");
         OverdueOfficeTaskCount = tasks.Count(t => t.Status == "Overdue");
+        ActiveOfficeTaskCount = PendingOfficeTaskCount + InProgressOfficeTaskCount + OverdueOfficeTaskCount;
         CompletedOfficeTaskCount = tasks.Count(t => t.Status == "Completed");
 
         await LoadJobTicketMetricsAsync();
@@ -121,42 +127,59 @@ public class IndexModel : PageModel
 
     private async Task LoadEmployeePerformanceMetricsAsync()
     {
-        var latestEvaluations = await _db.PerformanceEvaluations
+        // Only Finalized evaluations count here - same rule Manager >
+        // Performance Report uses - so a manager's in-progress Draft never
+        // shows up as if it were an official score.
+        var finalizedEvaluations = await _db.PerformanceEvaluations
             .Include(e => e.Employee)
-            .Where(e => e.Employee != null)
+            .Where(e => e.EvaluationStatus == EvaluationStatus.Finalized && e.Employee != null)
             .ToListAsync();
 
-        // One row per employee: their most recent evaluation only, so the
-        // dashboard reflects current standing rather than averaging every
-        // evaluation an employee has ever had.
-        var latestPerEmployee = latestEvaluations
+        // Average Performance Score must match what the Performance Report
+        // shows for All Periods/All Departments: each employee contributes
+        // the average of every Finalized evaluation they have (not just
+        // their latest one), and every employee counts equally regardless of
+        // how many evaluations they've accumulated.
+        var perEmployeeAverage = finalizedEvaluations
+            .GroupBy(e => e.EmployeeID)
+            .Select(g => new
+            {
+                Employee = g.First().Employee!,
+                AverageScore = Math.Round(g.Average(e => e.OverallScore), 2, MidpointRounding.AwayFromZero)
+            })
+            .ToList();
+
+        if (perEmployeeAverage.Any())
+        {
+            AveragePerformanceScore = Math.Round(perEmployeeAverage.Average(e => e.AverageScore), 1);
+
+            var officeStaff = perEmployeeAverage.Where(e => e.Employee.RoleType == RoleType.OfficeStaff).ToList();
+            var fieldTechs = perEmployeeAverage.Where(e => e.Employee.RoleType == RoleType.FieldTechnician).ToList();
+
+            AverageOfficeStaffScore = officeStaff.Any() ? Math.Round(officeStaff.Average(e => e.AverageScore), 1) : 0;
+            AverageFieldTechnicianScore = fieldTechs.Any() ? Math.Round(fieldTechs.Average(e => e.AverageScore), 1) : 0;
+        }
+
+        // Top Performers / Needs Improvement still reflect each employee's
+        // most recent Finalized evaluation - "how are they doing right now",
+        // a current snapshot rather than their all-time average.
+        var latestPerEmployee = finalizedEvaluations
             .GroupBy(e => e.EmployeeID)
             .Select(g => g.OrderByDescending(e => e.EvaluationDate).First())
             .ToList();
 
-        if (latestPerEmployee.Any())
-        {
-            AveragePerformanceScore = Math.Round(latestPerEmployee.Average(e => e.OverallScore), 1);
+        TopPerformers = latestPerEmployee
+            .OrderByDescending(e => e.OverallScore)
+            .Take(3)
+            .Select(e => (e.Employee!.FullName, e.OverallScore, e.OverallRating))
+            .ToList();
 
-            var officeStaff = latestPerEmployee.Where(e => e.Employee!.RoleType == RoleType.OfficeStaff).ToList();
-            var fieldTechs = latestPerEmployee.Where(e => e.Employee!.RoleType == RoleType.FieldTechnician).ToList();
-
-            AverageOfficeStaffScore = officeStaff.Any() ? Math.Round(officeStaff.Average(e => e.OverallScore), 1) : 0;
-            AverageFieldTechnicianScore = fieldTechs.Any() ? Math.Round(fieldTechs.Average(e => e.OverallScore), 1) : 0;
-
-            TopPerformers = latestPerEmployee
-                .OrderByDescending(e => e.OverallScore)
-                .Take(3)
-                .Select(e => (e.Employee!.FullName, e.OverallScore, e.OverallRating))
-                .ToList();
-
-            NeedsImprovement = latestPerEmployee
-                .Where(e => e.OverallRating is "Needs Improvement" or "Poor")
-                .OrderBy(e => e.OverallScore)
-                .Take(5)
-                .Select(e => (e.Employee!.FullName, e.OverallScore, e.OverallRating))
-                .ToList();
-        }
+        NeedsImprovement = latestPerEmployee
+            .Where(e => e.OverallRating is "Needs Improvement" or "Poor")
+            .OrderBy(e => e.OverallScore)
+            .Take(5)
+            .Select(e => (e.Employee!.FullName, e.OverallScore, e.OverallRating))
+            .ToList();
     }
 
     private async Task RefreshOverdueStatusesAsync(List<Model.OfficeTask> tasks)

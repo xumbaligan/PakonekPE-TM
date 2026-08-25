@@ -29,7 +29,7 @@
         <div class="text-end">
             <div class="d-flex align-items-center gap-2 justify-content-end">
                 <partial name="_Stars" model="e.OverallStars" />
-                <span class="fs-4 fw-bold">@e.OverallScore.ToString("0.##") / 100</span>
+                <span class="fs-4 fw-bold">@e.OverallScore.ToString("0.##") / 4</span>
             </div>
             <span class="badge bg-@(ratingClass)-subtle text-@(ratingClass)-emphasis">@e.OverallRating</span>
         </div>
@@ -92,7 +92,7 @@
                             </td>
                             <td>
                                 <partial name="_Stars" model="r.StarRating" />
-                                <div class="text-muted small">@r.StarRating.ToString("0.#") / 5</div>
+                                <div class="text-muted small">@r.StarRating.ToString("0.#") / 4</div>
                             </td>
                             <td>@r.Score.ToString("0.##") / @(r.Criteria?.Weight ?? 0)</td>
                             <td class="text-muted">@(string.IsNullOrEmpty(r.Feedback) ? "-" : r.Feedback)</td>

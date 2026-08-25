@@ -27,7 +27,7 @@
                     <partial name="_Stars" model="Model.OverallStars" />
                 </div>
                 <div class="display-6 fw-bold mt-1">@Model.OverallScore.ToString("0.##")</div>
-                <div class="text-muted small">out of 100 &mdash; across all finalized evaluations</div>
+                <div class="text-muted small">out of 4 &mdash; across all finalized evaluations</div>
                 <div class="mt-2">
                     <span class="badge bg-@(overallClass)-subtle text-@(overallClass)-emphasis">@Model.OverallRating</span>
                 </div>
@@ -113,7 +113,7 @@
             </div>
             <div class="col-md-3">
                 <div class="text-muted small">Score</div>
-                <div class="fw-semibold fs-6">@last.OverallScore.ToString("0.##") / 100</div>
+                <div class="fw-semibold fs-6">@last.OverallScore.ToString("0.##") / 4</div>
             </div>
         </div>
     }
@@ -178,7 +178,7 @@
                                     <span class="badge bg-@(rowClass)-subtle text-@(rowClass)-emphasis">@e.OverallRating</span>
                                 </div>
                             </td>
-                            <td class="fw-semibold">@e.OverallScore.ToString("0.##") <span class="text-muted small fw-normal">/ 100</span></td>
+                            <td class="fw-semibold">@e.OverallScore.ToString("0.##") <span class="text-muted small fw-normal">/ 4</span></td>
                             <td>@e.EvaluatorName</td>
                             <td class="text-end">
                                 <button type="button" class="btn btn-sm btn-outline-secondary view-evaluation-btn"

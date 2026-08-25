@@ -112,7 +112,7 @@
 
             <div class="card p-4 mb-4">
                 <h5 class="mb-1">@Model.Employee?.RoleType Criteria</h5>
-                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 5 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
+                <div class="text-muted small mb-3">Rate each criterion from 0.5 to 4 stars — click the left half of a star for a half rating. Click the same rating again to clear it.</div>
                 <partial name="_CriteriaStarRows" model="Model.Rows" />
             </div>
 
@@ -128,7 +128,7 @@
             <div class="card p-4 mb-3 sticky-top" style="top:1rem">
                 <h6 class="text-muted">Overall Score (preview)</h6>
                 <div class="display-6 fw-bold" id="overallScorePreview">@Model.Evaluation.OverallScore.ToString("0.#")</div>
-                <div class="text-muted small">out of 100</div>
+                <div class="text-muted small">out of 4</div>
                 <div class="mt-2 d-flex align-items-center gap-2">
                     <span id="overallStarsPreview"></span>
                     <span class="badge bg-primary-subtle text-primary" id="overallRatingPreview">@Model.Evaluation.OverallRating</span>
@@ -159,7 +159,7 @@
             const ratingPreview = document.getElementById('overallRatingPreview');
             const starsPreview = document.getElementById('overallStarsPreview');
 
-            const bands = [[90, 'Excellent'], [80, 'Very Good'], [70, 'Good'], [60, 'Needs Improvement'], [0, 'Poor']];
+            const bands = [[3.6, 'Excellent'], [3.2, 'Very Good'], [2.8, 'Good'], [2.4, 'Needs Improvement'], [0, 'Poor']];
 
             function ratingFor(score) {
                 for (const [min, label] of bands) { if (score >= min) return label; }
@@ -171,11 +171,11 @@
                 document.querySelectorAll('.star-value-input:not(:disabled)').forEach(input => {
                     const weight = parseFloat(input.dataset.weight || '0');
                     const stars = window.StarRating.snap(input.value || '0');
-                    total += weight * stars / 5;
+                    total += weight / 100 * stars;
                 });
                 scorePreview.textContent = total.toFixed(1);
                 ratingPreview.textContent = ratingFor(total);
-                starsPreview.innerHTML = window.StarRating.render(total / 20);
+                starsPreview.innerHTML = window.StarRating.render(total);
             }
 
             document.addEventListener('change', function (e) {

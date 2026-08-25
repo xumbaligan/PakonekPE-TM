@@ -68,7 +68,7 @@
                                 <partial name="_Stars" model="e.OverallStars" />
                                 <div class="text-muted small">@e.OverallRating</div>
                             </td>
-                            <td>@e.OverallScore.ToString("0.##") / 100</td>
+                            <td>@e.OverallScore.ToString("0.##") / 4</td>
                             <td>
                                 @if (e.EvaluationStatus == TM_PE.Model.EvaluationStatus.Finalized)
                                 {

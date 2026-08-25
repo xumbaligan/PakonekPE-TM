@@ -16,7 +16,7 @@
 // Read-only use: window.StarRating.render(value) returns star markup, used to
 // fill in view modals that are built in JavaScript.
 (function () {
-    const MAX_STARS = 5;
+    const MAX_STARS = 4;
     const STEP = 0.5;
 
     function clampValue(value) {
@@ -144,7 +144,7 @@
         (root || document).querySelectorAll('[data-star-input]').forEach(wire);
     }
 
-    // Read-only star markup for a 0-5 value, including partial fills.
+    // Read-only star markup for a 0-4 value, including partial fills.
     function render(value, extraClass) {
         const cls = (extraClass === undefined) ? 'sm' : extraClass;
         return '<span class="star-rating readonly ' + cls + '">' + starMarkup(clampValue(value)) + '</span>';

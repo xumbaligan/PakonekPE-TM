@@ -116,7 +116,7 @@
                                 if (!rating) return '';
                                 return rating === 'Not yet evaluated'
                                     ? 'Not yet evaluated'
-                                    : ctx.parsed.y + ' / 100 (' + rating + ')';
+                                    : ctx.parsed.y + ' / 4 (' + rating + ')';
                             }
                         }
                     }
@@ -124,8 +124,8 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 100,
-                        title: { display: true, text: 'Score out of 100' }
+                        max: 4,
+                        title: { display: true, text: 'Score out of 4' }
                     },
                     x: {
                         ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
@@ -154,7 +154,29 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'bottom' },
+                    // Percentages sit right on the legend (not just the hover
+                    // tooltip) so a manager can read the ratings breakdown at
+                    // a glance, including on a printed/exported view of the page.
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            generateLabels: function (chart) {
+                                const data = chart.data;
+                                const values = data.datasets[0].data;
+                                const total = values.reduce((a, b) => a + b, 0);
+                                return data.labels.map(function (label, i) {
+                                    const pct = total ? Math.round(values[i] * 100 / total) : 0;
+                                    return {
+                                        text: label + ' — ' + pct + '%',
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        strokeStyle: data.datasets[0].borderColor,
+                                        lineWidth: data.datasets[0].borderWidth,
+                                        index: i
+                                    };
+                                });
+                            }
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function (ctx) {

@@ -79,8 +79,9 @@ namespace TM_PE.Pages.Manager.PerformanceEvaluation
 
             if (status == EvaluationStatus.Finalized)
             {
-                var workQualityError = EvaluationScoring.ValidateWorkQualityRequired(
-                    allowedCriteria, Results.Select(r => (r.CriteriaID, r.StarRating, r.Feedback)));
+                var workQualityError = EvaluationScoring.ValidateAllCriteriaRated(
+                    allowedCriteria, Results.Select(r => (r.CriteriaID, r.StarRating, r.Feedback)),
+                    requireFeedback: false);
                 if (workQualityError != null)
                 {
                     ModelState.AddModelError(string.Empty, workQualityError);

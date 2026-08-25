@@ -38,24 +38,6 @@
                 </div>
                 <div class="form-text fw-semibold" id="weightAvailableText"></div>
             </div>
-            @* Only Field Technician criteria can be auto-scored - Office Staff
-               performance has no equivalent job-record metrics, so this stays
-               hidden (and MetricType stays WorkQuality/manual) for them. *@
-            <div class="col-md-6 d-none" id="metricTypeField">
-                <label class="form-label">Scoring Source</label>
-                <select class="form-select" asp-for="Item.MetricType" id="metricTypeSelect">
-                    <option value="WorkQuality">Work Quality (manually rated)</option>
-                    <option value="JobCompletion">Job Completion (auto, from completed jobs)</option>
-                    <option value="Timeliness">Timeliness (auto, from job overdue/on-time record)</option>
-                </select>
-                <div class="form-text">
-                    Job Completion and Timeliness are filled in automatically from the technician's job
-                    ticket record when the manager creates an evaluation, and locked - the manager can't
-                    adjust those stars by hand. Only Work Quality is manually rated. Each of the three can
-                    only be used by one active Field Technician criterion at a time, and their weights
-                    can't add up to more than 100%.
-                </div>
-            </div>
         </div>
         <div class="form-check mt-3 mb-3">
             <input class="form-check-input" type="checkbox" asp-for="Item.IsActive" />
@@ -70,9 +52,6 @@
     <script>
         (function () {
             const roleSelect = document.getElementById('roleTypeSelect');
-            const metricField = document.getElementById('metricTypeField');
-            const metricSelect = document.getElementById('metricTypeSelect');
-            const usedMetricTypes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.UsedFieldTechnicianMetricTypes));
 
             // Weight already committed to other active criteria of each Role
             // Type (excluding this one), so the remaining-percent indicator
@@ -103,28 +82,8 @@
                 weightAvailableText.classList.toggle('text-muted', remaining >= 0);
             }
 
-            function sync() {
-                const isFieldTechnician = roleSelect.value === 'FieldTechnician';
-                metricField.classList.toggle('d-none', !isFieldTechnician);
-                if (!isFieldTechnician) { metricSelect.value = 'WorkQuality'; return; }
-
-                Array.from(metricSelect.options).forEach(function (opt) {
-                    // This criterion's own current value is excluded from
-                    // usedMetricTypes server-side, so it's never disabled here.
-                    const taken = usedMetricTypes.includes(opt.value);
-                    opt.disabled = taken;
-                    opt.textContent = opt.textContent.replace(' (already used)', '') + (taken ? ' (already used)' : '');
-                });
-                if (metricSelect.selectedOptions[0] && metricSelect.selectedOptions[0].disabled) {
-                    const free = Array.from(metricSelect.options).find(o => !o.disabled);
-                    if (free) metricSelect.value = free.value;
-                }
-            }
-
-            roleSelect.addEventListener('change', sync);
             roleSelect.addEventListener('change', updateWeightAvailability);
             weightInput.addEventListener('input', updateWeightAvailability);
-            sync();
             updateWeightAvailability();
         })();
     </script>

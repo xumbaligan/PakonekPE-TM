@@ -84,9 +84,37 @@
     </div>
 </div>
 
+<script type="application/json" id="officeTaskChartData">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+        officeTaskStatusOverview = Model.OfficeTaskStatusOverview,
+        officeTasksOverTime = Model.OfficeTasksOverTime
+    }))
+</script>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <h5 class="mb-3">Office Task Status Overview</h5>
+            <div class="chart-box">
+                <canvas id="officeTaskStatusChart"></canvas>
+                <div class="chart-message d-none" id="officeTaskStatusMessage"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <h5 class="mb-3">Office Tasks Over Time</h5>
+            <div class="chart-box">
+                <canvas id="officeTasksOverTimeChart"></canvas>
+                <div class="chart-message d-none" id="officeTasksOverTimeMessage"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <h5 class="mb-3">Workload — Job Tickets</h5>
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md">
+    <div class="col-6 col-md-2">
         <div class="stat-tile d-flex align-items-center gap-3">
             <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-activity"></i></div>
             <div>
@@ -95,7 +123,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md">
+    <div class="col-6 col-md-2">
         <div class="stat-tile d-flex align-items-center gap-3">
             <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-hourglass-split"></i></div>
             <div>
@@ -104,7 +132,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md">
+    <div class="col-6 col-md-2">
         <div class="stat-tile d-flex align-items-center gap-3">
             <div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-play-circle"></i></div>
             <div>
@@ -113,7 +141,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md">
+    <div class="col-6 col-md-2">
         <div class="stat-tile d-flex align-items-center gap-3">
             <div class="stat-icon bg-success-subtle text-success"><i class="bi bi-check2-circle"></i></div>
             <div>
@@ -122,12 +150,53 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md">
+    <div class="col-6 col-md-2">
         <div class="stat-tile d-flex align-items-center gap-3">
             <div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle"></i></div>
             <div>
                 <div class="stat-label">Overdue</div>
                 <div class="stat-value">@Model.OverdueJobs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-tile d-flex align-items-center gap-3">
+            <div class="stat-icon bg-secondary-subtle text-secondary"><i class="bi bi-x-circle"></i></div>
+            <div>
+                <div class="stat-label">Cancelled</div>
+                <div class="stat-value">@Model.CancelledJobsCount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*
+    The chart data is emitted as a JSON <script> block rather than interpolated
+    straight into JavaScript, same convention as Manager > Performance Report.
+*@
+<script type="application/json" id="dashboardChartData">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+        jobTicketStatusOverview = Model.JobTicketStatusOverview,
+        jobsOverTime = Model.JobsOverTime
+    }))
+</script>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <h5 class="mb-3">Job Ticket Status Overview</h5>
+            <div class="chart-box">
+                <canvas id="jobTicketStatusChart"></canvas>
+                <div class="chart-message d-none" id="jobTicketStatusMessage"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <h5 class="mb-3">Jobs Over Time</h5>
+            <div class="chart-box">
+                <canvas id="jobsOverTimeChart"></canvas>
+                <div class="chart-message d-none" id="jobsOverTimeMessage"></div>
             </div>
         </div>
     </div>
@@ -234,3 +303,8 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/dist/chart.umd.min.js"></script>
+    <script src="~/js/dashboard-charts.js" asp-append-version="true"></script>
+}

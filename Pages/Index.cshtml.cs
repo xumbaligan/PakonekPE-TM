@@ -29,6 +29,14 @@ public class IndexModel : PageModel
     public int OverdueOfficeTaskCount { get; set; }
     public int CompletedOfficeTaskCount { get; set; }
 
+    // ---- Office Task charts ----
+    // Pie chart: how many office tasks currently sit in each status, folding
+    // "Completed Late" into "Completed" to match CompletedOfficeTaskCount.
+    public List<ChartPoint> OfficeTaskStatusOverview { get; set; } = new();
+
+    // Line chart: office tasks created per month, for the last 6 months.
+    public List<ChartPoint> OfficeTasksOverTime { get; set; } = new();
+
     // ---- Job Ticket workload ----
     public int TotalActiveJobs { get; set; }
     public int PendingJobs { get; set; }
@@ -41,6 +49,16 @@ public class IndexModel : PageModel
     public decimal OnTimeCompletionRate { get; set; }
     public int RescheduledJobsCount { get; set; }
     public int CancelledJobsCount { get; set; }
+
+    // ---- Job Ticket charts ----
+    // Pie chart: how many tickets currently sit in each status. Uses the same
+    // live Overdue check as the tiles above (rather than the raw stored
+    // Status) so a Pending ticket past its deadline counts as Overdue here
+    // too, and folds "Completed Late" into "Completed" to match CompletedJobs.
+    public List<ChartPoint> JobTicketStatusOverview { get; set; } = new();
+
+    // Line chart: tickets created per month, for the last 6 months.
+    public List<ChartPoint> JobsOverTime { get; set; } = new();
 
     // ---- Employee performance (based on each employee's most recent
     // Performance Evaluation) ----
@@ -70,6 +88,25 @@ public class IndexModel : PageModel
         OverdueOfficeTaskCount = tasks.Count(t => t.Status == "Overdue");
         ActiveOfficeTaskCount = PendingOfficeTaskCount + InProgressOfficeTaskCount + OverdueOfficeTaskCount;
         CompletedOfficeTaskCount = tasks.Count(t => t.Status == "Completed");
+
+        OfficeTaskStatusOverview = tasks
+            .GroupBy(t => t.Status == "Completed" ? "Completed" : t.Status)
+            .Select(g => new ChartPoint { Label = g.Key, Value = g.Count() })
+            .Where(p => p.Value > 0)
+            .OrderByDescending(p => p.Value)
+            .ToList();
+
+        var officeTaskMonths = Enumerable.Range(0, 6)
+            .Select(i => DateTime.Now.Date.AddMonths(-(5 - i)))
+            .Select(d => new DateTime(d.Year, d.Month, 1));
+
+        OfficeTasksOverTime = officeTaskMonths
+            .Select(m => new ChartPoint
+            {
+                Label = m.ToString("MMM yyyy"),
+                Value = tasks.Count(t => t.DateCreated.Year == m.Year && t.DateCreated.Month == m.Month)
+            })
+            .ToList();
 
         await LoadJobTicketMetricsAsync();
         await LoadEmployeePerformanceMetricsAsync();
@@ -123,6 +160,38 @@ public class IndexModel : PageModel
             .Select(r => r.JobTicketID)
             .Distinct()
             .CountAsync();
+
+        JobTicketStatusOverview = tickets
+            .GroupBy(t => EffectiveStatus(t, IsOverdue))
+            .Select(g => new ChartPoint { Label = g.Key, Value = g.Count() })
+            .Where(p => p.Value > 0)
+            .OrderByDescending(p => p.Value)
+            .ToList();
+
+        var months = Enumerable.Range(0, 6)
+            .Select(i => DateTime.Now.Date.AddMonths(-(5 - i)))
+            .Select(d => new DateTime(d.Year, d.Month, 1));
+
+        JobsOverTime = months
+            .Select(m => new ChartPoint
+            {
+                Label = m.ToString("MMM yyyy"),
+                Value = tickets.Count(t => t.DateCreated.Year == m.Year && t.DateCreated.Month == m.Month)
+            })
+            .ToList();
+    }
+
+    // What to bucket a ticket under for the Status Overview pie chart:
+    // Overdue takes priority (mirrors the tiles above), otherwise the
+    // ticket's own status, with "Completed Late" folded into "Completed" so
+    // it matches CompletedJobs.
+    private static string EffectiveStatus(Model.JobTicket t, Func<Model.JobTicket, bool> isOverdue) =>
+        isOverdue(t) ? "Overdue" : (t.Status == JobTicketStatuses.Completed ? "Completed" : t.Status);
+
+    public class ChartPoint
+    {
+        public string Label { get; set; } = string.Empty;
+        public decimal Value { get; set; }
     }
 
     private async Task LoadEmployeePerformanceMetricsAsync()

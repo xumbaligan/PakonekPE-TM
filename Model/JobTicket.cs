@@ -121,13 +121,17 @@ namespace TM_PE.Model
         [StringLength(100)]
         public string ClientFullName { get; set; } = string.Empty;
 
+        // Philippine mobile format: exactly 11 digits, starting with 09 (e.g.
+        // 09171234567). StringLength stays 20 (matches the existing DB
+        // column) so tightening this format doesn't require a migration -
+        // the RegularExpression is what actually enforces the 11-digit rule.
         [Required(ErrorMessage = "Primary number is required.")]
         [StringLength(20)]
-        [RegularExpression(@"^[0-9+\-\s()]{7,20}$", ErrorMessage = "Enter a valid contact number.")]
+        [RegularExpression(@"^09\d{9}$", ErrorMessage = "Enter a valid 11-digit Philippine mobile number (e.g. 09171234567).")]
         public string PrimaryNumber { get; set; } = string.Empty;
 
         [StringLength(20)]
-        [RegularExpression(@"^[0-9+\-\s()]{7,20}$", ErrorMessage = "Enter a valid contact number.")]
+        [RegularExpression(@"^09\d{9}$", ErrorMessage = "Enter a valid 11-digit Philippine mobile number (e.g. 09171234567).")]
         public string? SecondaryNumber { get; set; }
 
         // Only used when JobType == Installation. Free-text plan name/price chosen

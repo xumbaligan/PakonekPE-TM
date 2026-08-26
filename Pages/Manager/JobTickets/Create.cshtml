@@ -104,7 +104,9 @@
                     <input asp-for="JobTicket.PrimaryNumber"
                            id="primaryNumberInput"
                            class="form-control"
-                           placeholder="09xx xxx xxxx"
+                           placeholder="09171234567"
+                           inputmode="numeric"
+                           maxlength="11"
                            required />
 
                     <span asp-validation-for="JobTicket.PrimaryNumber" class="text-danger"></span>
@@ -118,7 +120,9 @@
                     <input asp-for="JobTicket.SecondaryNumber"
                            id="secondaryNumberInput"
                            class="form-control"
-                           placeholder="Optional" />
+                           placeholder="Optional"
+                           inputmode="numeric"
+                           maxlength="11" />
 
                     <span asp-validation-for="JobTicket.SecondaryNumber" class="text-danger"></span>
                 </div>
@@ -338,6 +342,16 @@
             const clientFullNameInput = document.getElementById('clientFullNameInput');
             const primaryNumberInput = document.getElementById('primaryNumberInput');
             const secondaryNumberInput = document.getElementById('secondaryNumberInput');
+
+            // Philippine mobile numbers only: digits only, capped at 11
+            // (e.g. 09171234567), matching JobTicket.PrimaryNumber/SecondaryNumber.
+            function restrictToPhMobile(input) {
+                input.addEventListener('input', function () {
+                    input.value = input.value.replace(/\D/g, '').slice(0, 11);
+                });
+            }
+            restrictToPhMobile(primaryNumberInput);
+            restrictToPhMobile(secondaryNumberInput);
 
             function applyClientInfoVisibility(type) {
                 if (type === 'Maintenance') {

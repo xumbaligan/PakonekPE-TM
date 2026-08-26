@@ -201,12 +201,12 @@ namespace TM_PE.Pages.Manager.JobTickets
 
                 if (string.IsNullOrWhiteSpace(JobTicket.PrimaryNumber))
                     ModelState.AddModelError("JobTicket.PrimaryNumber", "Primary number is required.");
-                else if (!System.Text.RegularExpressions.Regex.IsMatch(JobTicket.PrimaryNumber, @"^[0-9+\-\s()]{7,20}$"))
-                    ModelState.AddModelError("JobTicket.PrimaryNumber", "Enter a valid contact number.");
+                else if (!System.Text.RegularExpressions.Regex.IsMatch(JobTicket.PrimaryNumber, @"^09\d{9}$"))
+                    ModelState.AddModelError("JobTicket.PrimaryNumber", "Enter a valid 11-digit Philippine mobile number (e.g. 09171234567).");
 
                 if (!string.IsNullOrWhiteSpace(JobTicket.SecondaryNumber) &&
-                    !System.Text.RegularExpressions.Regex.IsMatch(JobTicket.SecondaryNumber, @"^[0-9+\-\s()]{7,20}$"))
-                    ModelState.AddModelError("JobTicket.SecondaryNumber", "Enter a valid contact number.");
+                    !System.Text.RegularExpressions.Regex.IsMatch(JobTicket.SecondaryNumber, @"^09\d{9}$"))
+                    ModelState.AddModelError("JobTicket.SecondaryNumber", "Enter a valid 11-digit Philippine mobile number (e.g. 09171234567).");
             }
 
             if (!ModelState.IsValid)

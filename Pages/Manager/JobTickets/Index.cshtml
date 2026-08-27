@@ -21,6 +21,7 @@
             <option value="">All Statuses</option>
             <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Pending</option>
             <option value="In Progress" selected="@(Model.StatusFilter == "In Progress")">In Progress</option>
+            <option value="Reschedule Request" selected="@(Model.StatusFilter == "Reschedule Request")">Reschedule Request</option>
             <option value="Completed" selected="@(Model.StatusFilter == "Completed")">Completed</option>
             <option value="Completed Late" selected="@(Model.StatusFilter == "Completed Late")">Completed Late</option>
             <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Cancelled</option>
@@ -310,5 +311,10 @@
 
         searchInput.addEventListener('input', filterTable);
         statusSelect.addEventListener('change', filterTable);
+
+        // Apply immediately on load too, so a link that arrives with
+        // ?status=... (e.g. from the Dashboard) actually filters the table
+        // instead of only pre-selecting the dropdown.
+        filterTable();
     </script>
 }

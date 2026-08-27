@@ -22,6 +22,12 @@ namespace TM_PE.Pages.Manager.OfficeTask
         [BindProperty(SupportsGet = true)] public string? Search { get; set; }
         [BindProperty(Name = "status", SupportsGet = true)] public string? StatusFilter { get; set; }
 
+        // Not a column on OfficeTask - filters to tasks that have at least one
+        // TaskActivity in the given state. Used by the Dashboard's "Needs Your
+        // Attention" panel ("activity=pending-review" / "activity=rejected"),
+        // since neither activity review state maps cleanly onto OfficeTask.Status.
+        [BindProperty(Name = "activity", SupportsGet = true)] public string? ActivityFilter { get; set; }
+
         public async Task OnGetAsync()
         {
             OfficeTask = await _context.OfficeTasks
@@ -33,6 +39,15 @@ namespace TM_PE.Pages.Manager.OfficeTask
                 .ToListAsync();
 
             await RefreshOverdueStatusesAsync();
+
+            if (ActivityFilter == "pending-review")
+            {
+                OfficeTask = OfficeTask.Where(t => t.Activities.Any(a => a.Status == "Submitted")).ToList();
+            }
+            else if (ActivityFilter == "rejected")
+            {
+                OfficeTask = OfficeTask.Where(t => t.Activities.Any(a => a.Status == "Rejected")).ToList();
+            }
         }
 
         // A task becomes Overdue purely because time has passed, not because someone edited

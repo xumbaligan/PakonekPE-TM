@@ -148,10 +148,16 @@ app.Use(async (context, next) =>
 
     bool authorized =
         (path.StartsWithSegments("/Admin") && Allowed("Admin")) ||
-        // Admin's reach into /Manager is deliberately narrow: just the
-        // read-only Performance Report (view/generate/export), not the full
-        // Manager area (tickets, tasks, employees, evaluations, etc.).
+        // Admin's reach into /Manager is deliberately narrow: only the areas
+        // the Dashboard links into (Performance Report, Job Tickets, Office
+        // Task, Performance Evaluation, Workload Monitoring) - not the full
+        // Manager area (employees, departments, criteria, etc., which Admin
+        // already manages through its own /Admin pages instead).
         (path.StartsWithSegments("/Manager/PerformanceReport") && Allowed("Manager", "Admin")) ||
+        (path.StartsWithSegments("/Manager/JobTickets") && Allowed("Manager", "Admin")) ||
+        (path.StartsWithSegments("/Manager/OfficeTask") && Allowed("Manager", "Admin")) ||
+        (path.StartsWithSegments("/Manager/PerformanceEvaluation") && Allowed("Manager", "Admin")) ||
+        (path.StartsWithSegments("/Manager/WorkLoadMonitoring") && Allowed("Manager", "Admin")) ||
         (path.StartsWithSegments("/Manager") && Allowed("Manager")) ||
         (path.StartsWithSegments("/FieldTechnician") && Allowed("FieldTechnician")) ||
         (path.StartsWithSegments("/OfficeStaff") && Allowed("OfficeStaff")) ||

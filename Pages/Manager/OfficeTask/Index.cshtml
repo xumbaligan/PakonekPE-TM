@@ -26,7 +26,26 @@
             <option value="Overdue" selected="@(Model.StatusFilter == "Overdue")">Overdue</option>
         </select>
     </div>
+    @if (!string.IsNullOrEmpty(Model.ActivityFilter))
+    {
+        <input type="hidden" name="activity" value="@Model.ActivityFilter" />
+    }
 </form>
+
+@if (Model.ActivityFilter == "pending-review")
+{
+    <div class="alert alert-info d-flex justify-content-between align-items-center py-2">
+        <span>Showing tasks with at least one activity awaiting review.</span>
+        <a asp-page="./Index" asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter" class="small">Clear filter</a>
+    </div>
+}
+else if (Model.ActivityFilter == "rejected")
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center py-2">
+        <span>Showing tasks with at least one rejected activity awaiting resubmission.</span>
+        <a asp-page="./Index" asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter" class="small">Clear filter</a>
+    </div>
+}
 
 <div class="table-responsive card">
     <table class="table align-middle table-hover mb-0">
@@ -360,5 +379,10 @@
 
         searchInput.addEventListener('input', filterTable);
         statusSelect.addEventListener('change', filterTable);
+
+        // Apply immediately on load too, so a link that arrives with
+        // ?status=... (e.g. from the Dashboard) actually filters the table
+        // instead of only pre-selecting the dropdown.
+        filterTable();
     </script>
 }
